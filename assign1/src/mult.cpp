@@ -1,19 +1,63 @@
 #include <stdio.h>
-#include <iostream>
-#include <iomanip>
-#include <time.h>
+#include <algorithm>
+#include <chrono>
 #include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <string>
 
 using namespace std;
 
-#define SYSTEMTIME clock_t
+struct RunResult {
+    double seconds;
+    double gflops;
+};
 
- 
-void OnMult(int m_ar, int m_br) 
+static RunResult buildResult(int size, double seconds)
 {
-    SYSTEMTIME Time1, Time2;
-    
-    char st[100];
+    const double n = static_cast<double>(size);
+    const double flops = 2.0 * n * n * n;
+    return {seconds, flops / (seconds * 1e9)};
+}
+
+static void printResult(const RunResult& result, const string& language, const string& variant, int size, int blockSize, bool csv)
+{
+    if (csv) {
+        cout << language << "," << variant << "," << size << "," << blockSize << "," << fixed << setprecision(6) << result.seconds << ","<< fixed << setprecision(6) << result.gflops << endl;
+        return;
+    }
+
+    cout << fixed << setprecision(3);
+    cout << "Time: " << result.seconds << " seconds" << endl;
+    cout << "GFLOPS: " << setprecision(6) << result.gflops << endl;
+}
+
+static void printMatrix(const double* phc, int m_br)
+{
+    cout << "Result matrix: " << endl;
+    for (int j = 0; j < min(10, m_br); j++) {
+        cout << phc[j] << " ";
+    }
+    cout << endl;
+}
+
+static void initializeMatrices(double* pha, double* phb, int m_ar, int m_br)
+{
+    for (int i = 0; i < m_ar; i++) {
+        for (int j = 0; j < m_ar; j++) {
+            pha[i * m_ar + j] = 1.0;
+        }
+    }
+
+    for (int i = 0; i < m_ar; i++) {
+        for (int j = 0; j < m_br; j++) {
+            phb[i * m_br + j] = (double)(i + 1);
+        }
+    }
+}
+
+RunResult OnMult(int m_ar, int m_br, bool csv = false)
+{
     double temp;
     int i, j, k;
 
@@ -23,15 +67,9 @@ void OnMult(int m_ar, int m_br)
     phb = (double *)malloc((m_ar * m_ar) * sizeof(double));
     phc = (double *)malloc((m_ar * m_ar) * sizeof(double));
 
-    for(i = 0; i < m_ar; i++)
-        for(j = 0; j < m_ar; j++)
-            pha[i*m_ar + j] = 1.0;
+    initializeMatrices(pha, phb, m_ar, m_br);
 
-    for(i = 0; i < m_br; i++)
-        for(j = 0; j < m_br; j++)
-            phb[i*m_br + j] = (double)(i + 1);
-
-    Time1 = clock();
+    const auto time1 = chrono::steady_clock::now();
 
     for(i = 0; i < m_ar; i++)
     {
@@ -46,31 +84,24 @@ void OnMult(int m_ar, int m_br)
         }
     }
 
-    Time2 = clock();
-    snprintf(st, sizeof(st), "Time: %3.3f seconds\n",
-         (double)(Time2 - Time1) / CLOCKS_PER_SEC);
-    cout << st;
+    const auto time2 = chrono::steady_clock::now();
+    const double seconds = chrono::duration<double>(time2 - time1).count();
+    const RunResult result = buildResult(m_ar, seconds);
+    printResult(result, "cpp", "standard", m_ar, 0, csv);
 
-    cout << "Result matrix: " << endl;
-    for(i = 0; i < 1; i++)
-    {
-        for(j = 0; j < min(10, m_br); j++)
-            cout << phc[j] << " ";
+    if (!csv) {
+        printMatrix(phc, m_br);
     }
-    cout << endl;
 
     free(pha);
     free(phb);
     free(phc);
+    return result;
 }
 
 
-// Line-by-line matrix multiplication
-void OnMultLine(int m_ar, int m_br)
+RunResult OnMultLine(int m_ar, int m_br, bool csv = false)
 {
-    SYSTEMTIME Time1, Time2;
-
-    char st[100];
     int i, k, j;
 
     double *pha, *phb, *phc;
@@ -78,19 +109,13 @@ void OnMultLine(int m_ar, int m_br)
     pha = (double *)malloc((m_ar * m_ar) * sizeof(double));
     phb = (double *)malloc((m_ar * m_ar) * sizeof(double));
     phc = (double *)malloc((m_ar * m_ar) * sizeof(double));
-   
-    for(i = 0; i < m_ar; i++)
-        for(j = 0; j < m_ar; j++)
-            pha[i*m_ar + j] = 1.0;
 
-    for(i = 0; i < m_br; i++)
-        for(j = 0; j < m_br; j++)
-            phb[i*m_br + j] = (double)(i + 1);
+    initializeMatrices(pha, phb, m_ar, m_br);
 
-    for(i = 0; i < m_ar * m_ar; i++)
+    for(i = 0; i < m_ar * m_br; i++)
         phc[i] = 0.0;
 
-    Time1 = clock();
+    const auto time1 = chrono::steady_clock::now();
 
     for(i = 0; i < m_ar; i++)
     {
@@ -100,34 +125,27 @@ void OnMultLine(int m_ar, int m_br)
             {
                 phc[i*m_ar + j] += pha[i*m_ar + k] * phb[k*m_br + j];
             }
-        }   
+        }
     }
 
-    Time2 = clock();
-    snprintf(st, sizeof(st), "Time: %3.3f seconds\n", 
-            (double)(Time2 - Time1) / CLOCKS_PER_SEC);
-    cout << st;
+    const auto time2 = chrono::steady_clock::now();
+    const double seconds = chrono::duration<double>(time2 - time1).count();
+    const RunResult result = buildResult(m_ar, seconds);
+    printResult(result, "cpp", "line", m_ar, 0, csv);
 
-    cout << "Result matrix: " << endl;
-    for(i = 0; i < 1; i++)
-    {
-        for(j = 0; j < min(10, m_br); j++)
-            cout << phc[j] << " ";
+    if (!csv) {
+        printMatrix(phc, m_br);
     }
-    cout << endl;
 
     free(pha);
     free(phb);
     free(phc);
+    return result;
 }
 
 
-// Block matrix multiplication
-void OnMultBlock(int m_ar, int m_br, int bkSize)
+RunResult OnMultBlock(int m_ar, int m_br, int bkSize, bool csv = false)
 {
-    SYSTEMTIME Time1, Time2;
-
-    char st[100];
     int i, j, k;
     int ii, jj, kk;
 
@@ -137,18 +155,12 @@ void OnMultBlock(int m_ar, int m_br, int bkSize)
     phb = (double *)malloc((m_ar * m_ar) * sizeof(double));
     phc = (double *)malloc((m_ar * m_ar) * sizeof(double));
 
-    for(i = 0; i < m_ar; i++)
-        for(j = 0; j < m_ar; j++)
-            pha[i*m_ar + j] = 1.0;
+    initializeMatrices(pha, phb, m_ar, m_br);
 
-    for(i = 0; i < m_br; i++)
-        for(j = 0; j < m_br; j++)
-            phb[i*m_br + j] = (double)(i + 1);
-
-    for(i = 0; i < m_ar * m_ar; i++)
+    for(i = 0; i < m_ar * m_br; i++)
         phc[i] = 0.0;
 
-    Time1 = clock();
+    const auto time1 = chrono::steady_clock::now();
 
     for(ii = 0; ii < m_ar; ii += bkSize)
     {
@@ -170,22 +182,19 @@ void OnMultBlock(int m_ar, int m_br, int bkSize)
         }
     }
 
-    Time2 = clock();
-    snprintf(st, sizeof(st), "Time: %3.3f seconds\n",
-            (double)(Time2 - Time1) / CLOCKS_PER_SEC);
-    cout << st;     
+    const auto time2 = chrono::steady_clock::now();
+    const double seconds = chrono::duration<double>(time2 - time1).count();
+    const RunResult result = buildResult(m_ar, seconds);
+    printResult(result, "cpp", "block", m_ar, bkSize, csv);
 
-    cout << "Result matrix: " << endl;
-    for(i = 0; i < 1; i++)
-    {
-        for(j = 0; j < min(10, m_br); j++)
-            cout << phc[j] << " "; 
+    if (!csv) {
+        printMatrix(phc, m_br);
     }
-    cout << endl;
 
     free(pha);
     free(phb);
     free(phc);
+    return result;
 }
 
 
@@ -193,6 +202,39 @@ int main(int argc, char *argv[])
 {
     int lin, col, blockSize;
     int op;
+
+    if (argc >= 3) {
+        op = atoi(argv[1]);
+        lin = atoi(argv[2]);
+        col = lin;
+
+        if (op == 1) {
+            const bool csv = (argc >= 4) && (string(argv[3]) == "--csv");
+            OnMult(lin, col, csv);
+            return 0;
+        }
+
+        if (op == 2) {
+            const bool csv = (argc >= 4) && (string(argv[3]) == "--csv");
+            OnMultLine(lin, col, csv);
+            return 0;
+        }
+
+        if (op == 3) {
+            if (argc < 4) {
+                cerr << "Usage: ./mult_cpp 3 <size> <block_size> [--csv]" << endl;
+                return 1;
+            }
+
+            blockSize = atoi(argv[3]);
+            const bool csv = (argc >= 5) && (string(argv[4]) == "--csv");
+            OnMultBlock(lin, col, blockSize, csv);
+            return 0;
+        }
+
+        cerr << "Usage: ./mult_cpp <1|2|3> <size> [block_size] [--csv]" << endl;
+        return 1;
+    }
 
     do {
         cout << endl << "1. Multiplication" << endl;
@@ -220,6 +262,8 @@ int main(int argc, char *argv[])
                 cout << "Block Size? ";
                 cin >> blockSize;
                 OnMultBlock(lin, col, blockSize);
+                break;
+            default:
                 break;
         }
 
