@@ -104,6 +104,7 @@ static RunResult onMultParallel1(int size, int threads, bool csv)
 static RunResult onMultParallel2(int size, int threads, bool csv)
 {
     double *pha, *phb, *phc;
+    double temp = 0.0;
 
     pha = (double *)malloc((size * size) * sizeof(double));
     phb = (double *)malloc((size * size) * sizeof(double));
@@ -118,12 +119,20 @@ static RunResult onMultParallel2(int size, int threads, bool csv)
     {
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                double temp = 0.0;
-                #pragma omp for
+                #pragma omp single
+                {
+                    temp = 0.0;
+                }
+
+                #pragma omp for reduction(+:temp)
                 for (int k = 0; k < size; k++) {
                     temp += pha[i * size + k] * phb[k * size + j];
                 }
-                phc[i * size + j] = temp;
+
+                #pragma omp single
+                {
+                    phc[i * size + j] = temp;
+                }
             }
         }
     }
@@ -195,14 +204,12 @@ static RunResult onMultLineSimd(int size, int threads, bool csv)
 
     const auto time1 = chrono::steady_clock::now();
 
-    #pragma omp parallel
-    {
-        for (int i = 0; i < size; i++) {
-            for (int k = 0; k < size; k++) {
-                #pragma omp for simd
-                for (int j = 0; j < size; j++) {
-                    phc[i * size + j] += pha[i * size + k] * phb[k * size + j];
-                }
+    #pragma omp parallel for
+    for (int i = 0; i < size; i++) {
+        for (int k = 0; k < size; k++) {
+            #pragma omp simd
+            for (int j = 0; j < size; j++) {
+                phc[i * size + j] += pha[i * size + k] * phb[k * size + j];
             }
         }
     }

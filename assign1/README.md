@@ -244,11 +244,7 @@ This version is already more cache-friendly in the sequential case, so we analyz
 
 `lineParallel1` is the baseline parallel version and uses `#pragma omp parallel for` on the outer loop over `i`. As in `parallel1`, the directive distributes independent rows across threads, which keeps the implementation simple and usually gives the best balance between parallel work and synchronization cost.
 
-`lineSimd` uses `#pragma omp for simd` on the inner loop over `j`, inside a parallel region. The `for simd` directive attempts to combine two ideas at once: 
-1. Distribute loop iterations among the existing threads
-2. Encourage SIMD vectorization inside each thread. 
-
-In principle, this can improve arithmetic throughput, but its success depends heavily on the loop structure, compiler behavior, and runtime overhead.
+`lineSimd` uses `#pragma omp simd` on the inner loop over `j`, combined with `#pragma omp parallel for` on the outer loop over `i`. The goal is to preserve the outer-loop work distribution while encouraging SIMD vectorization inside each thread.
 
 `lineCollapse` uses `#pragma omp parallel for collapse(2)` on the loops over `i` and `k`. The `collapse(2)` clause merges those two nested loops into one larger iteration space before distributing work across threads. This increases the amount of visible parallel work, but it also introduces a problem: different collapsed iterations may update the same `C[i][j]`. For that reason the implementation uses `#pragma omp atomic`, which forces each update to shared memory to be performed atomically and avoids races at the cost of extra synchronization.
 
@@ -257,17 +253,13 @@ In principle, this can improve arithmetic throughput, but its success depends he
 ![Section 1 Version 1 GFLOP/s](doc/figures/part2_section1_v1_gflops.svg)
 ![Section 1 Version 1 Speedup](doc/figures/part2_section1_v1_speedup.svg)
 
-`parallel1` is clearly the better Version 1 implementation. It reaches higher GFLOP/s at every tested size and shows speedup between about `1.69` and `4.47`, depending on matrix size. `parallel2`, by contrast, remains close to speedup `1` and sometimes below for smaller matrix cases.
+`parallel1` remains the better Version 1 implementation overall. It reaches higher GFLOP/s in most tested sizes, while `parallel2` stays competitive in part of the range.
 
-This matches what we would expect from this type of parallelization. Parallelizing the outer loop over `i` distributes independent rows of the result matrix, while the `parallel2` structure keeps the parallel work in the inner loop which results in a much weaker decomposition of the computation.
+This still matches what we would expect from this type of parallelization. Parallelizing the outer loop over `i` distributes independent rows of the result matrix, while the `parallel2` structure keeps the parallel work in the inner loop and results in a weaker decomposition of the computation.
 
 ### Section 1 - Version 2
-![Section 1 Version 2 GFLOP/s](doc/figures/part2_section1_v2_gflops.svg)
-![Section 1 Version 2 Speedup](doc/figures/part2_section1_v2_speedup.svg)
 
-`lineParallel1` is the strongest variant of Version 2 across all matrix sizes. It is also the best-performing implementation in the whole dataset, reaching `10.43 GFLOP/s` at `1024` and remaining near `8.5 GFLOP/s` at `3072`.
-
-`lineSimd` and `lineCollapse` perform significantly worse. In this environment, `lineSimd` never approaches the plain `lineParallel1` version, and `lineCollapse` is consistently limited by the synchronization cost of the `atomic` updates. 
+`lineParallel1` is the strongest Version 2 result in this fixed 4-thread comparison, reaching `10.43 GFLOP/s` at `1024` and remaining near `8.5 GFLOP/s` at `3072`.
 
 Efficiency follows the same pattern, with `lineParallel1` consistently making better use of the available threads across all matrix sizes.
 
@@ -275,19 +267,19 @@ Efficiency follows the same pattern, with `lineParallel1` consistently making be
 ![Section 2 GFLOP/s](doc/figures/part2_section2_gflops.svg)
 ![Section 2 Speedup](doc/figures/part2_section2_speedup.svg)
 
-The most important conclusion from Section 2 is  `lineParallel1` remains the best strategy as the thread count increases. Its measured GFLOP/s grows from about `16.82` at 4 threads to `22.74` at 12 threads, and it still maintains good performance at 24 threads, although the gains are no longer linear.
+The most important conclusion from Section 2 is that `lineSimd` becomes the strongest strategy as the thread count increases. It starts close to `lineParallel1` at 4 threads and then moves ahead, reaching about `24.03 GFLOP/s` at 16 threads.
 
-`lineCollapse` stays clearly below `lineParallel1`. Its speedup is modest, roughly between `1.7` and `2.5`, which is consistent with the overhead introduced by combining loop collapsing with atomic updates.
+`lineParallel1` remains competitive, especially up to 12 threads, but `lineCollapse` stays clearly below the other two variants. Its speedup is modest, roughly between `1.7` and `2.5`, which is consistent with the overhead introduced by combining loop collapsing with atomic updates.
 
-`lineSimd` is the weakest variant. Its performance drops as the thread count increases, and the measured value at 12 threads already goes down to about `0.38 GFLOP/s`, with speedup close to zero. This suggests that, in this implementation and experimental setup, the OpenMP for simd strategy does not interact well with the loop organization.
+This suggests that SIMD on the innermost loop can improve the Version 2 when combined with the outer-loop OpenMP decomposition.
 
 ## Conclusions
 Part 2 confirms that simply adding OpenMP is not enough to guarantee good parallel performance. The decomposition strategy matters as much as the number of threads.
 
-For Version 1, `parallel1` is  superior to `parallel2` approach. This shows that the parallelism across independent rows is much more effective than trying to distribute only the inner loop.
+For Version 1, `parallel1` is still superior to `parallel2`, although `parallel2` remains competitive in part of the tested range.
 
-For Version 2, `lineParallel1` is the best overall solution. It combines the good memory access pattern of `i-k-j` with a clean outer loop parallelization and consistently delivers the highest GFLOP/s and the strongest speedup.
+For Version 2, `lineParallel1` is the strongest option in the 4 thread comparison, while `lineSimd` gives the best results in the `8192 x 8192` range.
 
-`lineCollapse` is functional but limited, mainly because atomic introduces extra synchronization overhead. `lineSimd` performs poorly in this dataset and becomes the worst performing option as the thread count grows.
+`lineCollapse` is functional but limited, mainly because atomic introduces extra synchronization overhead.
 
-Overall, the best results are obtained when a good memory layout is combined with a simple, low-overhead parallel structure. In this project, that combination is `lineParallel1`.
+Overall, the best results are obtained when a good memory layout is combined with a simple, low-overhead parallel structure, and in the larger thread count SIMD is the best implementation.
