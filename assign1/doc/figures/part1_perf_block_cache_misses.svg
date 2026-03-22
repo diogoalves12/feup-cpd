@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620">
+<style>
+text { font-family: Helvetica, Arial, sans-serif; fill: #1b1b1b; }
+.title { font-size: 24px; font-weight: 700; }
+.axis-label { font-size: 18px; font-weight: 600; }
+.tick { font-size: 14px; }
+.legend { font-size: 14px; }
+.grid { stroke: #d9dde3; stroke-width: 1; }
+.axis { stroke: #30343b; stroke-width: 1.5; }
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text class="title" x="490.0" y="38" text-anchor="middle">Part 1: Block Cache Misses (cpu_core)</text>
+<line class="grid" x1="95" y1="535.00" x2="940" y2="535.00"/>
+<text class="tick" x="83" y="540.00" text-anchor="end">0</text>
+<line class="grid" x1="95" y1="442.00" x2="940" y2="442.00"/>
+<text class="tick" x="83" y="447.00" text-anchor="end">356830332</text>
+<line class="grid" x1="95" y1="349.00" x2="940" y2="349.00"/>
+<text class="tick" x="83" y="354.00" text-anchor="end">713660663</text>
+<line class="grid" x1="95" y1="256.00" x2="940" y2="256.00"/>
+<text class="tick" x="83" y="261.00" text-anchor="end">1.1e+09</text>
+<line class="grid" x1="95" y1="163.00" x2="940" y2="163.00"/>
+<text class="tick" x="83" y="168.00" text-anchor="end">1.4e+09</text>
+<line class="grid" x1="95" y1="70.00" x2="940" y2="70.00"/>
+<text class="tick" x="83" y="75.00" text-anchor="end">1.8e+09</text>
+<line class="grid" x1="95.00" y1="70" x2="95.00" y2="535"/>
+<text class="tick" x="95.00" y="561" text-anchor="middle">4096</text>
+<line class="grid" x1="376.67" y1="70" x2="376.67" y2="535"/>
+<text class="tick" x="376.67" y="561" text-anchor="middle">6144</text>
+<line class="grid" x1="658.33" y1="70" x2="658.33" y2="535"/>
+<text class="tick" x="658.33" y="561" text-anchor="middle">8192</text>
+<line class="grid" x1="940.00" y1="70" x2="940.00" y2="535"/>
+<text class="tick" x="940.00" y="561" text-anchor="middle">10240</text>
+<line class="axis" x1="95" y1="535" x2="940" y2="535"/>
+<line class="axis" x1="95" y1="70" x2="95" y2="535"/>
+<text class="axis-label" x="490.0" y="596" text-anchor="middle">Matrix size</text>
+<text class="axis-label" transform="translate(28 310.0) rotate(-90)" text-anchor="middle">Cache misses</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="3" points="95.00,520.16 376.67,470.62 658.33,300.96 940.00,260.12"/>
+<circle cx="95.00" cy="520.16" r="4.5" fill="#1f77b4" />
+<circle cx="376.67" cy="470.62" r="4.5" fill="#1f77b4" />
+<circle cx="658.33" cy="300.96" r="4.5" fill="#1f77b4" />
+<circle cx="940.00" cy="260.12" r="4.5" fill="#1f77b4" />
+<line x1="105" y1="42" x2="131" y2="42" stroke="#1f77b4" stroke-width="3"/>
+<circle cx="118" cy="42" r="4.5" fill="#1f77b4" />
+<text class="legend" x="141" y="47">Block 128</text>
+<polyline fill="none" stroke="#d62728" stroke-width="3" points="95.00,520.34 376.67,482.43 658.33,104.44 940.00,177.78"/>
+<circle cx="95.00" cy="520.34" r="4.5" fill="#d62728" />
+<circle cx="376.67" cy="482.43" r="4.5" fill="#d62728" />
+<circle cx="658.33" cy="104.44" r="4.5" fill="#d62728" />
+<circle cx="940.00" cy="177.78" r="4.5" fill="#d62728" />
+<line x1="105" y1="66" x2="131" y2="66" stroke="#d62728" stroke-width="3"/>
+<circle cx="118" cy="66" r="4.5" fill="#d62728" />
+<text class="legend" x="141" y="71">Block 256</text>
+<polyline fill="none" stroke="#2ca02c" stroke-width="3" points="95.00,520.40 376.67,487.41 658.33,275.26 940.00,293.47"/>
+<circle cx="95.00" cy="520.40" r="4.5" fill="#2ca02c" />
+<circle cx="376.67" cy="487.41" r="4.5" fill="#2ca02c" />
+<circle cx="658.33" cy="275.26" r="4.5" fill="#2ca02c" />
+<circle cx="940.00" cy="293.47" r="4.5" fill="#2ca02c" />
+<line x1="105" y1="90" x2="131" y2="90" stroke="#2ca02c" stroke-width="3"/>
+<circle cx="118" cy="90" r="4.5" fill="#2ca02c" />
+<text class="legend" x="141" y="95">Block 512</text>
+</svg>

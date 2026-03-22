@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620">
+<style>
+text { font-family: Helvetica, Arial, sans-serif; fill: #1b1b1b; }
+.title { font-size: 24px; font-weight: 700; }
+.axis-label { font-size: 18px; font-weight: 600; }
+.tick { font-size: 14px; }
+.legend { font-size: 14px; }
+.grid { stroke: #d9dde3; stroke-width: 1; }
+.axis { stroke: #30343b; stroke-width: 1.5; }
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text class="title" x="490.0" y="38" text-anchor="middle">Block Performance</text>
+<line class="grid" x1="95" y1="535.00" x2="940" y2="535.00"/>
+<text class="tick" x="83" y="540.00" text-anchor="end">0</text>
+<line class="grid" x1="95" y1="442.00" x2="940" y2="442.00"/>
+<text class="tick" x="83" y="447.00" text-anchor="end">1.44</text>
+<line class="grid" x1="95" y1="349.00" x2="940" y2="349.00"/>
+<text class="tick" x="83" y="354.00" text-anchor="end">2.88</text>
+<line class="grid" x1="95" y1="256.00" x2="940" y2="256.00"/>
+<text class="tick" x="83" y="261.00" text-anchor="end">4.32</text>
+<line class="grid" x1="95" y1="163.00" x2="940" y2="163.00"/>
+<text class="tick" x="83" y="168.00" text-anchor="end">5.76</text>
+<line class="grid" x1="95" y1="70.00" x2="940" y2="70.00"/>
+<text class="tick" x="83" y="75.00" text-anchor="end">7.20</text>
+<line class="grid" x1="95.00" y1="70" x2="95.00" y2="535"/>
+<text class="tick" x="95.00" y="561" text-anchor="middle">4096</text>
+<line class="grid" x1="376.67" y1="70" x2="376.67" y2="535"/>
+<text class="tick" x="376.67" y="561" text-anchor="middle">6144</text>
+<line class="grid" x1="658.33" y1="70" x2="658.33" y2="535"/>
+<text class="tick" x="658.33" y="561" text-anchor="middle">8192</text>
+<line class="grid" x1="940.00" y1="70" x2="940.00" y2="535"/>
+<text class="tick" x="940.00" y="561" text-anchor="middle">10240</text>
+<line class="axis" x1="95" y1="535" x2="940" y2="535"/>
+<line class="axis" x1="95" y1="70" x2="95" y2="535"/>
+<text class="axis-label" x="490.0" y="596" text-anchor="middle">Matrix size</text>
+<text class="axis-label" transform="translate(28 310.0) rotate(-90)" text-anchor="middle">Performance (GFLOP/s)</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="3" points="95.00,128.79 376.67,138.34 658.33,201.68 940.00,130.93"/>
+<circle cx="95.00" cy="128.79" r="4.5" fill="#1f77b4" />
+<circle cx="376.67" cy="138.34" r="4.5" fill="#1f77b4" />
+<circle cx="658.33" cy="201.68" r="4.5" fill="#1f77b4" />
+<circle cx="940.00" cy="130.93" r="4.5" fill="#1f77b4" />
+<line x1="105" y1="42" x2="131" y2="42" stroke="#1f77b4" stroke-width="3"/>
+<circle cx="118" cy="42" r="4.5" fill="#1f77b4" />
+<text class="legend" x="141" y="47">Block 128</text>
+<polyline fill="none" stroke="#d62728" stroke-width="3" points="95.00,104.44 376.67,136.34 658.33,169.48 940.00,158.82"/>
+<circle cx="95.00" cy="104.44" r="4.5" fill="#d62728" />
+<circle cx="376.67" cy="136.34" r="4.5" fill="#d62728" />
+<circle cx="658.33" cy="169.48" r="4.5" fill="#d62728" />
+<circle cx="940.00" cy="158.82" r="4.5" fill="#d62728" />
+<line x1="105" y1="66" x2="131" y2="66" stroke="#d62728" stroke-width="3"/>
+<circle cx="118" cy="66" r="4.5" fill="#d62728" />
+<text class="legend" x="141" y="71">Block 256</text>
+<polyline fill="none" stroke="#2ca02c" stroke-width="3" points="95.00,120.81 376.67,123.72 658.33,234.12 940.00,137.30"/>
+<circle cx="95.00" cy="120.81" r="4.5" fill="#2ca02c" />
+<circle cx="376.67" cy="123.72" r="4.5" fill="#2ca02c" />
+<circle cx="658.33" cy="234.12" r="4.5" fill="#2ca02c" />
+<circle cx="940.00" cy="137.30" r="4.5" fill="#2ca02c" />
+<line x1="105" y1="90" x2="131" y2="90" stroke="#2ca02c" stroke-width="3"/>
+<circle cx="118" cy="90" r="4.5" fill="#2ca02c" />
+<text class="legend" x="141" y="95">Block 512</text>
+</svg>

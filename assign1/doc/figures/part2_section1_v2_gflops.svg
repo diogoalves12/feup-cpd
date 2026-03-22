@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620">
+<style>
+text { font-family: Helvetica, Arial, sans-serif; fill: #1b1b1b; }
+.title { font-size: 24px; font-weight: 700; }
+.axis-label { font-size: 18px; font-weight: 600; }
+.tick { font-size: 14px; }
+.legend { font-size: 14px; }
+.grid { stroke: #d9dde3; stroke-width: 1; }
+.axis { stroke: #30343b; stroke-width: 1.5; }
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text class="title" x="490.0" y="38" text-anchor="middle">Section 1: Version 2 Performance</text>
+<line class="grid" x1="95" y1="535.00" x2="940" y2="535.00"/>
+<text class="tick" x="83" y="540.00" text-anchor="end">0</text>
+<line class="grid" x1="95" y1="442.00" x2="940" y2="442.00"/>
+<text class="tick" x="83" y="447.00" text-anchor="end">2.25</text>
+<line class="grid" x1="95" y1="349.00" x2="940" y2="349.00"/>
+<text class="tick" x="83" y="354.00" text-anchor="end">4.51</text>
+<line class="grid" x1="95" y1="256.00" x2="940" y2="256.00"/>
+<text class="tick" x="83" y="261.00" text-anchor="end">6.76</text>
+<line class="grid" x1="95" y1="163.00" x2="940" y2="163.00"/>
+<text class="tick" x="83" y="168.00" text-anchor="end">9.01</text>
+<line class="grid" x1="95" y1="70.00" x2="940" y2="70.00"/>
+<text class="tick" x="83" y="75.00" text-anchor="end">11.3</text>
+<line class="grid" x1="95.00" y1="70" x2="95.00" y2="535"/>
+<text class="tick" x="95.00" y="561" text-anchor="middle">1024</text>
+<line class="grid" x1="306.25" y1="70" x2="306.25" y2="535"/>
+<text class="tick" x="306.25" y="561" text-anchor="middle">1536</text>
+<line class="grid" x1="517.50" y1="70" x2="517.50" y2="535"/>
+<text class="tick" x="517.50" y="561" text-anchor="middle">2048</text>
+<line class="grid" x1="728.75" y1="70" x2="728.75" y2="535"/>
+<text class="tick" x="728.75" y="561" text-anchor="middle">2560</text>
+<line class="grid" x1="940.00" y1="70" x2="940.00" y2="535"/>
+<text class="tick" x="940.00" y="561" text-anchor="middle">3072</text>
+<line class="axis" x1="95" y1="535" x2="940" y2="535"/>
+<line class="axis" x1="95" y1="70" x2="95" y2="535"/>
+<text class="axis-label" x="490.0" y="596" text-anchor="middle">Matrix size</text>
+<text class="axis-label" transform="translate(28 310.0) rotate(-90)" text-anchor="middle">Performance (GFLOP/s)</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="3" points="95.00,104.44 306.25,157.81 517.50,181.09 728.75,182.67 940.00,184.44"/>
+<circle cx="95.00" cy="104.44" r="4.5" fill="#1f77b4" />
+<circle cx="306.25" cy="157.81" r="4.5" fill="#1f77b4" />
+<circle cx="517.50" cy="181.09" r="4.5" fill="#1f77b4" />
+<circle cx="728.75" cy="182.67" r="4.5" fill="#1f77b4" />
+<circle cx="940.00" cy="184.44" r="4.5" fill="#1f77b4" />
+<line x1="105" y1="42" x2="131" y2="42" stroke="#1f77b4" stroke-width="3"/>
+<circle cx="118" cy="42" r="4.5" fill="#1f77b4" />
+<text class="legend" x="141" y="47">lineParallel1</text>
+<polyline fill="none" stroke="#d62728" stroke-width="3" points="95.00,504.38 306.25,493.27 517.50,481.17 728.75,470.36 940.00,460.41"/>
+<circle cx="95.00" cy="504.38" r="4.5" fill="#d62728" />
+<circle cx="306.25" cy="493.27" r="4.5" fill="#d62728" />
+<circle cx="517.50" cy="481.17" r="4.5" fill="#d62728" />
+<circle cx="728.75" cy="470.36" r="4.5" fill="#d62728" />
+<circle cx="940.00" cy="460.41" r="4.5" fill="#d62728" />
+<line x1="105" y1="66" x2="131" y2="66" stroke="#d62728" stroke-width="3"/>
+<circle cx="118" cy="66" r="4.5" fill="#d62728" />
+<text class="legend" x="141" y="71">lineSimd</text>
+<polyline fill="none" stroke="#2ca02c" stroke-width="3" points="95.00,503.08 306.25,503.15 517.50,502.55 728.75,502.61 940.00,502.76"/>
+<circle cx="95.00" cy="503.08" r="4.5" fill="#2ca02c" />
+<circle cx="306.25" cy="503.15" r="4.5" fill="#2ca02c" />
+<circle cx="517.50" cy="502.55" r="4.5" fill="#2ca02c" />
+<circle cx="728.75" cy="502.61" r="4.5" fill="#2ca02c" />
+<circle cx="940.00" cy="502.76" r="4.5" fill="#2ca02c" />
+<line x1="105" y1="90" x2="131" y2="90" stroke="#2ca02c" stroke-width="3"/>
+<circle cx="118" cy="90" r="4.5" fill="#2ca02c" />
+<text class="legend" x="141" y="95">lineCollapse</text>
+</svg>
