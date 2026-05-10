@@ -6,6 +6,7 @@ public final class Session {
     private final String username;
     private final String token;
     private final Instant expiresAt;
+    private String currentRoom;
 
     public Session(String username, String token, Instant expiresAt) {
         this.username = username;
@@ -23,6 +24,18 @@ public final class Session {
 
     public Instant expiresAt() {
         return expiresAt;
+    }
+
+    public String currentRoom() {
+        return currentRoom;
+    }
+
+    public void setCurrentRoom(String roomName) {
+        currentRoom = roomName;
+    }
+
+    public void clearCurrentRoom() {
+        currentRoom = null;
     }
 
     public boolean isExpiredAt(Instant instant) {

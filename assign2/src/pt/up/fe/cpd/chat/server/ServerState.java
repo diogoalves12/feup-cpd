@@ -1,8 +1,11 @@
 package pt.up.fe.cpd.chat.server;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantLock;
 
 public final class ServerState {
@@ -10,6 +13,7 @@ public final class ServerState {
     private final Map<String, User> usersByUsername = new HashMap<>();
     private final Map<String, Session> sessionsByToken = new HashMap<>();
     private final Map<String, Session> sessionsByUsername = new HashMap<>();
+    private final Map<String, Room> roomsByName = new HashMap<>();
 
     public boolean registerUser(String username, String passwordHash) {
         lock.lock();
@@ -64,6 +68,68 @@ public final class ServerState {
             }
 
             return session;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public List<String> listRoomNames() {
+        lock.lock();
+        try {
+            return new ArrayList<>(new TreeSet<>(roomsByName.keySet()));
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean createRoom(String roomName) {
+        lock.lock();
+        try {
+            if (roomsByName.containsKey(roomName)) {
+                return false;
+            }
+
+            roomsByName.put(roomName, new Room(roomName));
+            return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void joinRoom(Session session, String roomName) {
+        lock.lock();
+        try {
+            Room newRoom = roomsByName.computeIfAbsent(roomName, Room::new);
+            String previousRoomName = session.currentRoom();
+            if (previousRoomName != null) {
+                Room previousRoom = roomsByName.get(previousRoomName);
+                if (previousRoom != null) {
+                    previousRoom.removeMember(session.username());
+                }
+            }
+
+            newRoom.addMember(session.username());
+            session.setCurrentRoom(roomName);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean leaveRoom(Session session) {
+        lock.lock();
+        try {
+            String currentRoomName = session.currentRoom();
+            if (currentRoomName == null) {
+                return false;
+            }
+
+            Room room = roomsByName.get(currentRoomName);
+            if (room != null) {
+                room.removeMember(session.username());
+            }
+
+            session.clearCurrentRoom();
+            return true;
         } finally {
             lock.unlock();
         }

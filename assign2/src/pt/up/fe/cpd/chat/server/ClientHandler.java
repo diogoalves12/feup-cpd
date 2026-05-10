@@ -63,6 +63,10 @@ public final class ClientHandler implements Runnable {
             case REGISTER -> handleRegister(command.arguments(), writer);
             case LOGIN -> handleLogin(command.arguments(), writer);
             case RESUME -> handleResume(command.arguments(), writer);
+            case LIST_ROOMS -> handleListRooms(writer);
+            case CREATE_ROOM -> handleCreateRoom(command.arguments(), writer);
+            case JOIN -> handleJoin(command.arguments(), writer);
+            case LEAVE -> handleLeave(writer);
             default -> writer.println(Protocol.ok(command.type().name()));
         }
     }
@@ -120,6 +124,70 @@ public final class ClientHandler implements Runnable {
 
         currentSession = session;
         writer.println(Protocol.ok(CommandType.RESUME.name()));
+    }
+
+    private void handleListRooms(PrintWriter writer) {
+        if (!requireAuthentication(writer)) {
+            return;
+        }
+
+        writer.println(Protocol.rooms(serverState.listRoomNames()));
+    }
+
+    private void handleCreateRoom(List<String> arguments, PrintWriter writer) {
+        if (!requireAuthentication(writer)) {
+            return;
+        }
+
+        String roomName = arguments.getFirst().trim();
+        if (roomName.isBlank()) {
+            writer.println(Protocol.error("Room name must not be blank"));
+            return;
+        }
+
+        if (!serverState.createRoom(roomName)) {
+            writer.println(Protocol.error("Room already exists"));
+            return;
+        }
+
+        writer.println(Protocol.ok(CommandType.CREATE_ROOM.name()));
+    }
+
+    private void handleJoin(List<String> arguments, PrintWriter writer) {
+        if (!requireAuthentication(writer)) {
+            return;
+        }
+
+        String roomName = arguments.getFirst().trim();
+        if (roomName.isBlank()) {
+            writer.println(Protocol.error("Room name must not be blank"));
+            return;
+        }
+
+        serverState.joinRoom(currentSession, roomName);
+        writer.println(Protocol.ok(CommandType.JOIN.name()));
+    }
+
+    private void handleLeave(PrintWriter writer) {
+        if (!requireAuthentication(writer)) {
+            return;
+        }
+
+        if (!serverState.leaveRoom(currentSession)) {
+            writer.println(Protocol.error("Not in a room"));
+            return;
+        }
+
+        writer.println(Protocol.ok(CommandType.LEAVE.name()));
+    }
+
+    private boolean requireAuthentication(PrintWriter writer) {
+        if (!isAuthenticated()) {
+            writer.println(Protocol.error("Authentication required"));
+            return false;
+        }
+
+        return true;
     }
 
     private boolean isAuthenticated() {

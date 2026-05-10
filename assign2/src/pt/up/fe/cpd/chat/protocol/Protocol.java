@@ -1,6 +1,7 @@
 package pt.up.fe.cpd.chat.protocol;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 
 public final class Protocol {
@@ -20,6 +21,14 @@ public final class Protocol {
 
     public static String token(String token, Instant expiresAt) {
         return "TOKEN " + token + " " + expiresAt;
+    }
+
+    public static String rooms(List<String> roomNames) {
+        if (roomNames.isEmpty()) {
+            return "ROOMS";
+        }
+
+        return "ROOMS " + String.join("|", roomNames);
     }
 
     public static boolean isQuit(String line) {
