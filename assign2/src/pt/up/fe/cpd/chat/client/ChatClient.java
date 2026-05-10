@@ -22,12 +22,10 @@ public final class ChatClient {
 
     public void start() throws IOException {
         try (Socket socket = new Socket(host, port);
-             BufferedReader serverReader = new BufferedReader(
-                     new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-             PrintWriter serverWriter = new PrintWriter(
-                     new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)), true);
-            BufferedReader consoleReader = new BufferedReader(
-                     new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
+             BufferedReader serverReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+             PrintWriter serverWriter = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)), true);
+             BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))
+            ) {
 
             System.out.printf("Connected to %s:%d%n", host, port);
             Thread replyReader = Thread.ofVirtual().start(() -> readReplies(serverReader));
