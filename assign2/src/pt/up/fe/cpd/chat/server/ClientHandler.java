@@ -1,5 +1,8 @@
 package pt.up.fe.cpd.chat.server;
 
+import pt.up.fe.cpd.chat.protocol.ClientCommand;
+import pt.up.fe.cpd.chat.protocol.CommandParser;
+import pt.up.fe.cpd.chat.protocol.CommandType;
 import pt.up.fe.cpd.chat.protocol.Protocol;
 
 import java.io.BufferedReader;
@@ -28,16 +31,23 @@ public final class ClientHandler implements Runnable {
             while ((line = reader.readLine()) != null) {
                 System.out.printf("[%s] %s%n", socket.getRemoteSocketAddress(), line);
 
-                if (Protocol.isQuit(line)) {
+                final ClientCommand command;
+                try {
+                    command = CommandParser.parse(line);
+                } catch (IllegalArgumentException exception) {
+                    writer.println(Protocol.error(exception.getMessage()));
+                    continue;
+                }
+
+                if (command.type() == CommandType.QUIT) {
                     writer.println(Protocol.ok("bye"));
                     break;
                 }
 
-                writer.println(Protocol.ok("received"));
+                writer.println(Protocol.ok(command.type().name()));
             }
         } catch (IOException exception) {
             System.err.printf("Connection error with %s: %s%n", socket.getRemoteSocketAddress(), exception.getMessage());
-        // executa se tudo correr bem, se o client der quit, se existir exceção     
         } finally {
             System.out.printf("Closed connection from %s%n", socket.getRemoteSocketAddress());
         }

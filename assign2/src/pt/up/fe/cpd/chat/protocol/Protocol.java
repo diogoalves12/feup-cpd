@@ -4,12 +4,17 @@ import java.util.Locale;
 
 public final class Protocol {
     public static final String OK = "OK";
+    public static final String ERROR = "ERROR";
 
     private Protocol() {
     }
 
     public static String ok(String message) {
         return OK + " " + message;
+    }
+
+    public static String error(String message) {
+        return ERROR + " " + message;
     }
 
     public static boolean isQuit(String line) {
