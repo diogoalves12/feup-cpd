@@ -13,12 +13,17 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.List;
 
 public final class ClientHandler implements Runnable {
     private final Socket socket;
+    private final ServerState serverState;
+    private Session currentSession;
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, ServerState serverState) {
         this.socket = socket;
+        this.serverState = serverState;
     }
 
     @Override
@@ -44,12 +49,80 @@ public final class ClientHandler implements Runnable {
                     break;
                 }
 
-                writer.println(Protocol.ok(command.type().name()));
+                handleCommand(command, writer);
             }
         } catch (IOException exception) {
             System.err.printf("Connection error with %s: %s%n", socket.getRemoteSocketAddress(), exception.getMessage());
         } finally {
             System.out.printf("Closed connection from %s%n", socket.getRemoteSocketAddress());
         }
+    }
+
+    private void handleCommand(ClientCommand command, PrintWriter writer) {
+        switch (command.type()) {
+            case REGISTER -> handleRegister(command.arguments(), writer);
+            case LOGIN -> handleLogin(command.arguments(), writer);
+            case RESUME -> handleResume(command.arguments(), writer);
+            default -> writer.println(Protocol.ok(command.type().name()));
+        }
+    }
+
+    private void handleRegister(List<String> arguments, PrintWriter writer) {
+        String username = arguments.getFirst().trim();
+        String password = arguments.get(1).trim();
+        if (username.isBlank() || password.isBlank()) {
+            writer.println(Protocol.error("Username and password must not be blank"));
+            return;
+        }
+
+        String passwordHash = AuthService.hashPassword(password);
+        boolean registered = serverState.registerUser(username, passwordHash);
+        if (!registered) {
+            writer.println(Protocol.error("User already exists"));
+            return;
+        }
+
+        writer.println(Protocol.ok(CommandType.REGISTER.name()));
+    }
+
+    private void handleLogin(List<String> arguments, PrintWriter writer) {
+        String username = arguments.getFirst().trim();
+        String password = arguments.get(1).trim();
+        if (username.isBlank() || password.isBlank()) {
+            writer.println(Protocol.error("Invalid username or password"));
+            return;
+        }
+
+        User user = serverState.findUser(username);
+        if (user == null || !AuthService.verifyPassword(password, user.passwordHash())) {
+            writer.println(Protocol.error("Invalid username or password"));
+            return;
+        }
+
+        Session session = serverState.storeSession(TokenService.newSession(username));
+        currentSession = session;
+        writer.println(Protocol.ok(CommandType.LOGIN.name()));
+        writer.println(Protocol.token(session.token(), session.expiresAt()));
+    }
+
+    private void handleResume(List<String> arguments, PrintWriter writer) {
+        String token = arguments.getFirst().trim();
+        if (token.isBlank()) {
+            writer.println(Protocol.error("Invalid or expired token"));
+            return;
+        }
+
+        Session session = serverState.findValidSession(token, Instant.now());
+        if (session == null) {
+            writer.println(Protocol.error("Invalid or expired token"));
+            return;
+        }
+
+        currentSession = session;
+        writer.println(Protocol.ok(CommandType.RESUME.name()));
+    }
+
+    private boolean isAuthenticated() {
+        return currentSession != null;
     }
 }

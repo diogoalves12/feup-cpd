@@ -6,9 +6,11 @@ import java.net.Socket;
 
 public final class ChatServer {
     private final int port;
+    private final ServerState serverState;
 
     public ChatServer(int port) {
         this.port = port;
+        this.serverState = new ServerState();
     }
 
     public void start() throws IOException {
@@ -18,7 +20,7 @@ public final class ChatServer {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.printf("Accepted connection from %s%n", clientSocket.getRemoteSocketAddress());
-                Thread.ofVirtual().start(new ClientHandler(clientSocket));
+                Thread.ofVirtual().start(new ClientHandler(clientSocket, serverState));
             }
         }
     }

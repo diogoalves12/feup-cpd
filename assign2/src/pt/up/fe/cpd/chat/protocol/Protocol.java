@@ -1,5 +1,6 @@
 package pt.up.fe.cpd.chat.protocol;
 
+import java.time.Instant;
 import java.util.Locale;
 
 public final class Protocol {
@@ -15,6 +16,10 @@ public final class Protocol {
 
     public static String error(String message) {
         return ERROR + " " + message;
+    }
+
+    public static String token(String token, Instant expiresAt) {
+        return "TOKEN " + token + " " + expiresAt;
     }
 
     public static boolean isQuit(String line) {
