@@ -31,6 +31,14 @@ public final class Protocol {
         return "ROOMS " + String.join("|", roomNames);
     }
 
+    public static String roomMessage(String roomName, String username, String message) {
+        return "ROOM_MESSAGE " + roomName + " " + username + " " + message;
+    }
+
+    public static String systemMessage(String roomName, String message) {
+        return "SYSTEM " + roomName + " " + message;
+    }
+
     public static boolean isQuit(String line) {
         if (line == null) {
             return false;

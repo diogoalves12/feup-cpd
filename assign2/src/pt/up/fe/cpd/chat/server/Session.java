@@ -7,6 +7,7 @@ public final class Session {
     private final String token;
     private final Instant expiresAt;
     private String currentRoom;
+    private ClientConnection currentConnection;
 
     public Session(String username, String token, Instant expiresAt) {
         this.username = username;
@@ -36,6 +37,18 @@ public final class Session {
 
     public void clearCurrentRoom() {
         currentRoom = null;
+    }
+
+    public ClientConnection currentConnection() {
+        return currentConnection;
+    }
+
+    public void setCurrentConnection(ClientConnection connection) {
+        currentConnection = connection;
+    }
+
+    public void clearCurrentConnection() {
+        currentConnection = null;
     }
 
     public boolean isExpiredAt(Instant instant) {

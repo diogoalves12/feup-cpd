@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantLock;
 
+import pt.up.fe.cpd.chat.protocol.Protocol;
+
 public final class ServerState {
     private final ReentrantLock lock = new ReentrantLock();
     private final Map<String, User> usersByUsername = new HashMap<>();
@@ -73,6 +75,32 @@ public final class ServerState {
         }
     }
 
+    public void attachConnection(Session session, ClientConnection connection) {
+        ClientConnection previousConnection;
+        lock.lock();
+        try {
+            previousConnection = session.currentConnection();
+            session.setCurrentConnection(connection);
+        } finally {
+            lock.unlock();
+        }
+
+        if (previousConnection != null && previousConnection != connection) {
+            previousConnection.close();
+        }
+    }
+
+    public void detachConnection(Session session, ClientConnection connection) {
+        lock.lock();
+        try {
+            if (session.currentConnection() == connection) {
+                session.clearCurrentConnection();
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public List<String> listRoomNames() {
         lock.lock();
         try {
@@ -132,6 +160,75 @@ public final class ServerState {
             return true;
         } finally {
             lock.unlock();
+        }
+    }
+
+    public boolean broadcastRoomMessage(Session senderSession, String message) {
+        List<ClientConnection> targets = new ArrayList<>();
+        String roomName;
+        String formattedMessage;
+
+        lock.lock();
+        try {
+            roomName = senderSession.currentRoom();
+            if (roomName == null) {
+                return false;
+            }
+
+            Room room = roomsByName.get(roomName);
+            if (room == null) {
+                return false;
+            }
+
+            formattedMessage = Protocol.roomMessage(roomName, senderSession.username(), message);
+            room.addMessage(formattedMessage);
+            collectActiveConnectionsLocked(room.memberUsernamesSnapshot(), targets);
+        } finally {
+            lock.unlock();
+        }
+
+        sendToTargets(targets, formattedMessage);
+        return true;
+    }
+
+    public void broadcastSystemMessage(String roomName, String message) {
+        List<ClientConnection> targets = new ArrayList<>();
+        String formattedMessage;
+
+        lock.lock();
+        try {
+            Room room = roomsByName.get(roomName);
+            if (room == null) {
+                return;
+            }
+
+            formattedMessage = Protocol.systemMessage(roomName, message);
+            room.addMessage(formattedMessage);
+            collectActiveConnectionsLocked(room.memberUsernamesSnapshot(), targets);
+        } finally {
+            lock.unlock();
+        }
+
+        sendToTargets(targets, formattedMessage);
+    }
+
+    private void collectActiveConnectionsLocked(List<String> memberUsernames, List<ClientConnection> targets) {
+        for (String username : memberUsernames) {
+            Session memberSession = sessionsByUsername.get(username);
+            if (memberSession == null) {
+                continue;
+            }
+
+            ClientConnection connection = memberSession.currentConnection();
+            if (connection != null && connection.isActive()) {
+                targets.add(connection);
+            }
+        }
+    }
+
+    private void sendToTargets(List<ClientConnection> targets, String message) {
+        for (ClientConnection connection : targets) {
+            connection.send(message);
         }
     }
 }

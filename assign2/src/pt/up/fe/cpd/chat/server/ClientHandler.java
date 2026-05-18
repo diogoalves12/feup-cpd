@@ -20,6 +20,7 @@ public final class ClientHandler implements Runnable {
     private final Socket socket;
     private final ServerState serverState;
     private Session currentSession;
+    private ClientConnection currentConnection;
 
     public ClientHandler(Socket socket, ServerState serverState) {
         this.socket = socket;
@@ -54,6 +55,7 @@ public final class ClientHandler implements Runnable {
         } catch (IOException exception) {
             System.err.printf("Connection error with %s: %s%n", socket.getRemoteSocketAddress(), exception.getMessage());
         } finally {
+            cleanupConnection();
             System.out.printf("Closed connection from %s%n", socket.getRemoteSocketAddress());
         }
     }
@@ -67,6 +69,7 @@ public final class ClientHandler implements Runnable {
             case CREATE_ROOM -> handleCreateRoom(command.arguments(), writer);
             case JOIN -> handleJoin(command.arguments(), writer);
             case LEAVE -> handleLeave(writer);
+            case MSG -> handleMessage(command.arguments(), writer);
             default -> writer.println(Protocol.ok(command.type().name()));
         }
     }
@@ -107,6 +110,7 @@ public final class ClientHandler implements Runnable {
         currentSession = session;
         writer.println(Protocol.ok(CommandType.LOGIN.name()));
         writer.println(Protocol.token(session.token(), session.expiresAt()));
+        installConnection(writer);
     }
 
     private void handleResume(List<String> arguments, PrintWriter writer) {
@@ -124,6 +128,7 @@ public final class ClientHandler implements Runnable {
 
         currentSession = session;
         writer.println(Protocol.ok(CommandType.RESUME.name()));
+        installConnection(writer);
     }
 
     private void handleListRooms(PrintWriter writer) {
@@ -131,7 +136,7 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
-        writer.println(Protocol.rooms(serverState.listRoomNames()));
+        reply(writer, Protocol.rooms(serverState.listRoomNames()));
     }
 
     private void handleCreateRoom(List<String> arguments, PrintWriter writer) {
@@ -141,16 +146,16 @@ public final class ClientHandler implements Runnable {
 
         String roomName = arguments.getFirst().trim();
         if (roomName.isBlank()) {
-            writer.println(Protocol.error("Room name must not be blank"));
+            reply(writer, Protocol.error("Room name must not be blank"));
             return;
         }
 
         if (!serverState.createRoom(roomName)) {
-            writer.println(Protocol.error("Room already exists"));
+            reply(writer, Protocol.error("Room already exists"));
             return;
         }
 
-        writer.println(Protocol.ok(CommandType.CREATE_ROOM.name()));
+        reply(writer, Protocol.ok(CommandType.CREATE_ROOM.name()));
     }
 
     private void handleJoin(List<String> arguments, PrintWriter writer) {
@@ -165,7 +170,8 @@ public final class ClientHandler implements Runnable {
         }
 
         serverState.joinRoom(currentSession, roomName);
-        writer.println(Protocol.ok(CommandType.JOIN.name()));
+        reply(writer, Protocol.ok(CommandType.JOIN.name()));
+        serverState.broadcastSystemMessage(roomName, currentSession.username() + " entered the room");
     }
 
     private void handleLeave(PrintWriter writer) {
@@ -173,12 +179,32 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
-        if (!serverState.leaveRoom(currentSession)) {
-            writer.println(Protocol.error("Not in a room"));
+        String roomName = currentSession.currentRoom();
+        if (roomName == null) {
+            reply(writer, Protocol.error("Not in a room"));
             return;
         }
 
-        writer.println(Protocol.ok(CommandType.LEAVE.name()));
+        serverState.broadcastSystemMessage(roomName, currentSession.username() + " left the room");
+        if (!serverState.leaveRoom(currentSession)) {
+            reply(writer, Protocol.error("Not in a room"));
+            return;
+        }
+
+        reply(writer, Protocol.ok(CommandType.LEAVE.name()));
+    }
+
+    private void handleMessage(List<String> arguments, PrintWriter writer) {
+        if (!requireAuthentication(writer)) {
+            return;
+        }
+
+        if (currentSession.currentRoom() == null) {
+            reply(writer, Protocol.error("Not in a room"));
+            return;
+        }
+
+        serverState.broadcastRoomMessage(currentSession, arguments.getFirst());
     }
 
     private boolean requireAuthentication(PrintWriter writer) {
@@ -192,5 +218,32 @@ public final class ClientHandler implements Runnable {
 
     private boolean isAuthenticated() {
         return currentSession != null;
+    }
+
+    private void installConnection(PrintWriter writer) {
+        ClientConnection newConnection = new ClientConnection(currentSession.username(), writer);
+        newConnection.startWriter();
+        serverState.attachConnection(currentSession, newConnection);
+
+        if (currentConnection != null && currentConnection != newConnection) {
+            currentConnection.close();
+        }
+        currentConnection = newConnection;
+    }
+
+    private void cleanupConnection() {
+        if (currentSession != null && currentConnection != null) {
+            serverState.detachConnection(currentSession, currentConnection);
+            currentConnection.close();
+        }
+    }
+
+    private void reply(PrintWriter writer, String message) {
+        if (currentConnection != null && currentConnection.isActive()) {
+            currentConnection.send(message);
+            return;
+        }
+
+        writer.println(message);
     }
 }
