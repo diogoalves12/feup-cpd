@@ -1,3 +1,11 @@
 .DS_Store
 .idea/
+docs-p2
 
+#ide
+.vscode
+
+# Build outputs
+assign2/out/
+.sdkmanrc
+*.class
