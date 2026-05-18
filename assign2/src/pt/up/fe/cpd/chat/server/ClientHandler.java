@@ -108,9 +108,9 @@ public final class ClientHandler implements Runnable {
 
         Session session = serverState.storeSession(TokenService.newSession(username));
         currentSession = session;
-        writer.println(Protocol.ok(CommandType.LOGIN.name()));
-        writer.println(Protocol.token(session.token(), session.expiresAt()));
         installConnection(writer);
+        reply(writer, Protocol.ok(CommandType.LOGIN.name()));
+        reply(writer, Protocol.token(session.token(), session.expiresAt()));
     }
 
     private void handleResume(List<String> arguments, PrintWriter writer) {
@@ -127,8 +127,8 @@ public final class ClientHandler implements Runnable {
         }
 
         currentSession = session;
-        writer.println(Protocol.ok(CommandType.RESUME.name()));
         installConnection(writer);
+        reply(writer, Protocol.ok(CommandType.RESUME.name()));
     }
 
     private void handleListRooms(PrintWriter writer) {
@@ -221,13 +221,9 @@ public final class ClientHandler implements Runnable {
     }
 
     private void installConnection(PrintWriter writer) {
-        ClientConnection newConnection = new ClientConnection(currentSession.username(), writer);
+        ClientConnection newConnection = new ClientConnection(currentSession.username(), socket, writer);
         newConnection.startWriter();
         serverState.attachConnection(currentSession, newConnection);
-
-        if (currentConnection != null && currentConnection != newConnection) {
-            currentConnection.close();
-        }
         currentConnection = newConnection;
     }
 

@@ -41,18 +41,25 @@ public final class ServerState {
     }
 
     public Session storeSession(Session session) {
+        ClientConnection previousConnection = null;
         lock.lock();
         try {
             Session previousSession = sessionsByUsername.put(session.username(), session);
             if (previousSession != null) {
                 sessionsByToken.remove(previousSession.token());
+                previousConnection = previousSession.currentConnection();
             }
 
             sessionsByToken.put(session.token(), session);
-            return session;
         } finally {
             lock.unlock();
         }
+
+        if (previousConnection != null) {
+            previousConnection.close();
+        }
+
+        return session;
     }
 
     public Session findValidSession(String token, Instant now) {
