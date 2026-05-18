@@ -19,12 +19,18 @@ import java.util.List;
 public final class ClientHandler implements Runnable {
     private final Socket socket;
     private final ServerState serverState;
+    private final OllamaClient ollamaClient;
     private Session currentSession;
     private ClientConnection currentConnection;
 
     public ClientHandler(Socket socket, ServerState serverState) {
+        this(socket, serverState, new OllamaClient());
+    }
+
+    ClientHandler(Socket socket, ServerState serverState, OllamaClient ollamaClient) {
         this.socket = socket;
         this.serverState = serverState;
+        this.ollamaClient = ollamaClient;
     }
 
     @Override
@@ -67,6 +73,7 @@ public final class ClientHandler implements Runnable {
             case RESUME -> handleResume(command.arguments(), writer);
             case LIST_ROOMS -> handleListRooms(writer);
             case CREATE_ROOM -> handleCreateRoom(command.arguments(), writer);
+            case CREATE_AI_ROOM -> handleCreateAiRoom(command.arguments(), writer);
             case JOIN -> handleJoin(command.arguments(), writer);
             case LEAVE -> handleLeave(writer);
             case MSG -> handleMessage(command.arguments(), writer);
@@ -158,6 +165,26 @@ public final class ClientHandler implements Runnable {
         reply(writer, Protocol.ok(CommandType.CREATE_ROOM.name()));
     }
 
+    private void handleCreateAiRoom(List<String> arguments, PrintWriter writer) {
+        if (!requireAuthentication(writer)) {
+            return;
+        }
+
+        String roomName = arguments.getFirst().trim();
+        String prompt = arguments.get(1).trim();
+        if (roomName.isBlank() || prompt.isBlank()) {
+            reply(writer, Protocol.error("CREATE_AI_ROOM requires a room name and prompt"));
+            return;
+        }
+
+        if (!serverState.createAiRoom(roomName, prompt)) {
+            reply(writer, Protocol.error("Room already exists"));
+            return;
+        }
+
+        reply(writer, Protocol.ok(CommandType.CREATE_AI_ROOM.name()));
+    }
+
     private void handleJoin(List<String> arguments, PrintWriter writer) {
         if (!requireAuthentication(writer)) {
             return;
@@ -169,7 +196,11 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
-        serverState.joinRoom(currentSession, roomName);
+        if (!serverState.joinRoom(currentSession, roomName)) {
+            reply(writer, Protocol.error("Room does not exist"));
+            return;
+        }
+
         reply(writer, Protocol.ok(CommandType.JOIN.name()));
         serverState.broadcastSystemMessage(roomName, currentSession.username() + " entered the room");
     }
@@ -199,12 +230,16 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
-        if (currentSession.currentRoom() == null) {
+        String roomName = currentSession.currentRoom();
+        if (roomName == null) {
             reply(writer, Protocol.error("Not in a room"));
             return;
         }
 
         serverState.broadcastRoomMessage(currentSession, arguments.getFirst());
+        if (serverState.isAiRoom(roomName)) {
+            triggerAiResponse(roomName, arguments.getFirst());
+        }
     }
 
     private boolean requireAuthentication(PrintWriter writer) {
@@ -241,5 +276,58 @@ public final class ClientHandler implements Runnable {
         }
 
         writer.println(message);
+    }
+
+    private void triggerAiResponse(String roomName, String latestUserMessage) {
+        Thread.ofVirtual().start(() -> {
+            ServerState.AiRoomContext context = serverState.aiRoomContext(roomName);
+            if (context == null) {
+                return;
+            }
+
+            String prompt = buildAiPrompt(context, latestUserMessage);
+            try {
+                String botResponse = ollamaClient.generate(prompt);
+                serverState.broadcastBotMessage(roomName, botResponse);
+            } catch (IOException exception) {
+                System.err.printf("AI response failed for room %s: %s%n", roomName, shortReason(exception));
+            }
+        });
+    }
+
+    private String buildAiPrompt(ServerState.AiRoomContext context, String latestUserMessage) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("You are Bot, a participant in a chat room.\n");
+        prompt.append("Use the room prompt and previous messages as context.\n");
+        prompt.append("Reply to the latest user message according to the room prompt.\n");
+        prompt.append("Do not summarize the conversation unless the room prompt explicitly asks for a summary.\n");
+        prompt.append("Return only the message text.\n");
+        prompt.append("Do not include prefixes like \"Bot:\" or \"ROOM_MESSAGE\".\n\n");
+        prompt.append("Room name:\n");
+        prompt.append(context.roomName()).append("\n\n");
+        prompt.append("Room prompt:\n");
+        prompt.append(context.prompt()).append("\n\n");
+        prompt.append("Previous room messages:\n");
+        for (String entry : context.messageLog()) {
+            prompt.append(entry).append('\n');
+        }
+        prompt.append("\nLatest user message:\n");
+        prompt.append(latestUserMessage).append("\n\n");
+        prompt.append("Bot response:\n");
+        return prompt.toString();
+    }
+
+    private String shortReason(IOException exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return "service unavailable";
+        }
+
+        String normalized = message.replace('\n', ' ').trim();
+        if (normalized.length() > 80) {
+            return normalized.substring(0, 80).trim();
+        }
+
+        return normalized;
     }
 }

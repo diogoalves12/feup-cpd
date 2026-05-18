@@ -35,6 +35,10 @@ public final class Protocol {
         return "ROOM_MESSAGE " + roomName + " " + username + " " + message;
     }
 
+    public static String botMessage(String roomName, String message) {
+        return roomMessage(roomName, "Bot", message);
+    }
+
     public static String systemMessage(String roomName, String message) {
         return "SYSTEM " + roomName + " " + message;
     }

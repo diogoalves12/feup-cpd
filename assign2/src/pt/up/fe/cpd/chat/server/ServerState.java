@@ -131,10 +131,28 @@ public final class ServerState {
         }
     }
 
-    public void joinRoom(Session session, String roomName) {
+    public boolean createAiRoom(String roomName, String prompt) {
         lock.lock();
         try {
-            Room newRoom = roomsByName.computeIfAbsent(roomName, Room::new);
+            if (roomsByName.containsKey(roomName)) {
+                return false;
+            }
+
+            roomsByName.put(roomName, new Room(roomName, true, prompt));
+            return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean joinRoom(Session session, String roomName) {
+        lock.lock();
+        try {
+            Room newRoom = roomsByName.get(roomName);
+            if (newRoom == null) {
+                return false;
+            }
+
             String previousRoomName = session.currentRoom();
             if (previousRoomName != null) {
                 Room previousRoom = roomsByName.get(previousRoomName);
@@ -145,6 +163,7 @@ public final class ServerState {
 
             newRoom.addMember(session.username());
             session.setCurrentRoom(roomName);
+            return true;
         } finally {
             lock.unlock();
         }
@@ -189,13 +208,58 @@ public final class ServerState {
 
             formattedMessage = Protocol.roomMessage(roomName, senderSession.username(), message);
             room.addMessage(formattedMessage);
-            collectActiveConnectionsLocked(room.memberUsernamesSnapshot(), targets);
+            collectActiveConnectionsLocked(room.memberUsernamesCopy(), targets);
         } finally {
             lock.unlock();
         }
 
         sendToTargets(targets, formattedMessage);
         return true;
+    }
+
+    public boolean isAiRoom(String roomName) {
+        lock.lock();
+        try {
+            Room room = roomsByName.get(roomName);
+            return room != null && room.isAiRoom();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public AiRoomContext aiRoomContext(String roomName) {
+        lock.lock();
+        try {
+            Room room = roomsByName.get(roomName);
+            if (room == null || !room.isAiRoom()) {
+                return null;
+            }
+
+            return new AiRoomContext(room.name(), room.aiPrompt(), room.messageLogCopy());
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void broadcastBotMessage(String roomName, String botMessage) {
+        List<ClientConnection> targets = new ArrayList<>();
+        String formattedMessage;
+
+        lock.lock();
+        try {
+            Room room = roomsByName.get(roomName);
+            if (room == null) {
+                return;
+            }
+
+            formattedMessage = Protocol.botMessage(roomName, botMessage);
+            room.addMessage(formattedMessage);
+            collectActiveConnectionsLocked(room.memberUsernamesCopy(), targets);
+        } finally {
+            lock.unlock();
+        }
+
+        sendToTargets(targets, formattedMessage);
     }
 
     public void broadcastSystemMessage(String roomName, String message) {
@@ -211,7 +275,7 @@ public final class ServerState {
 
             formattedMessage = Protocol.systemMessage(roomName, message);
             room.addMessage(formattedMessage);
-            collectActiveConnectionsLocked(room.memberUsernamesSnapshot(), targets);
+            collectActiveConnectionsLocked(room.memberUsernamesCopy(), targets);
         } finally {
             lock.unlock();
         }
@@ -236,6 +300,12 @@ public final class ServerState {
     private void sendToTargets(List<ClientConnection> targets, String message) {
         for (ClientConnection connection : targets) {
             connection.send(message);
+        }
+    }
+
+    public record AiRoomContext(String roomName, String prompt, List<String> messageLog) {
+        public AiRoomContext {
+            messageLog = List.copyOf(messageLog);
         }
     }
 }
