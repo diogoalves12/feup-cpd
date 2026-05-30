@@ -16,6 +16,16 @@ public final class ServerState {
     private final Map<String, Session> sessionsByToken = new HashMap<>();
     private final Map<String, Session> sessionsByUsername = new HashMap<>();
     private final Map<String, Room> roomsByName = new HashMap<>();
+    private final UserStore userStore;
+
+    public ServerState() {
+        this(new UserStore());
+    }
+
+    ServerState(UserStore userStore) {
+        this.userStore = userStore;
+        loadUsers();
+    }
 
     public boolean registerUser(String username, String passwordHash) {
         lock.lock();
@@ -24,7 +34,9 @@ public final class ServerState {
                 return false;
             }
 
-            usersByUsername.put(username, new User(username, passwordHash));
+            User user = new User(username, passwordHash);
+            userStore.saveUser(user);
+            usersByUsername.put(username, user);
             return true;
         } finally {
             lock.unlock();
@@ -300,6 +312,17 @@ public final class ServerState {
     private void sendToTargets(List<ClientConnection> targets, String message) {
         for (ClientConnection connection : targets) {
             connection.send(message);
+        }
+    }
+
+    private void loadUsers() {
+        lock.lock();
+        try {
+            for (User user : userStore.loadUsers()) {
+                usersByUsername.putIfAbsent(user.username(), user);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 

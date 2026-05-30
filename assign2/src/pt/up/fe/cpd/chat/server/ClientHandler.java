@@ -93,6 +93,11 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
+        if (username.contains(";")) {
+            writer.println(Protocol.error("Username must not contain ';'"));
+            return;
+        }
+
         String passwordHash = AuthService.hashPassword(password);
         boolean registered = serverState.registerUser(username, passwordHash);
         if (!registered) {

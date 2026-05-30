@@ -7,5 +7,6 @@ docs-p2
 
 # Build outputs
 assign2/out/
+assign2/data/users.txt
 .sdkmanrc
 *.class
