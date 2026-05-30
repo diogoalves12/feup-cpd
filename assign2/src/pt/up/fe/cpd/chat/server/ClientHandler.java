@@ -47,6 +47,10 @@ public final class ClientHandler implements Runnable {
                 try {
                     command = CommandParser.parse(line);
                 } catch (IllegalArgumentException exception) {
+                    if (isUnknownCommand(exception) && handleTextMessage(line, writer)) {
+                        continue;
+                    }
+
                     writer.println(Protocol.error(exception.getMessage()));
                     continue;
                 }
@@ -226,6 +230,19 @@ public final class ClientHandler implements Runnable {
     }
 
     private void handleMessage(List<String> arguments, PrintWriter writer) {
+        handleMessageText(arguments.getFirst(), writer);
+    }
+
+    private boolean handleTextMessage(String line, PrintWriter writer) {
+        if (!isAuthenticated() || currentSession.currentRoom() == null || line.trim().isEmpty()) {
+            return false;
+        }
+
+        handleMessageText(line, writer);
+        return true;
+    }
+
+    private void handleMessageText(String message, PrintWriter writer) {
         if (!requireAuthentication(writer)) {
             return;
         }
@@ -236,10 +253,14 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
-        serverState.broadcastRoomMessage(currentSession, arguments.getFirst());
+        serverState.broadcastRoomMessage(currentSession, message);
         if (serverState.isAiRoom(roomName)) {
-            triggerAiResponse(roomName, arguments.getFirst());
+            triggerAiResponse(roomName, message);
         }
+    }
+
+    private boolean isUnknownCommand(IllegalArgumentException exception) {
+        return "Unknown command".equals(exception.getMessage());
     }
 
     private boolean requireAuthentication(PrintWriter writer) {
