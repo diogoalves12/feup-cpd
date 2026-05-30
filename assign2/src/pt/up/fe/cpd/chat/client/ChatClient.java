@@ -131,7 +131,7 @@ public final class ChatClient {
                 throw new IOException("Connection closed during RESUME");
             }
 
-            System.out.printf("server> %s%n", reply);
+            printServerReply(reply);
             if (reply.startsWith("OK RESUME")) {
                 return true;
             }
@@ -223,7 +223,7 @@ public final class ChatClient {
                     captureToken(reply);
                 }
 
-                System.out.printf("server> %s%n", reply);
+                printServerReply(reply);
             }
         } catch (IOException exception) {
             if (isRunning() && !quitRequested()) {
@@ -264,6 +264,75 @@ public final class ChatClient {
             hasOutgoingCommands.signalAll();
         } finally {
             lock.unlock();
+        }
+    }
+
+    private void printServerReply(String reply) {
+        if (reply.startsWith("TOKEN ")) {
+            System.out.println("[system] Session started.");
+            return;
+        }
+
+        if (reply.startsWith("ERROR ")) {
+            String[] parts = reply.split("\\s+", 2);
+            System.out.printf("[error] %s%n", parts.length == 2 ? parts[1] : "");
+            return;
+        }
+
+        switch (reply) {
+            case "OK REGISTER" -> System.out.println("[system] User registered successfully.");
+            case "OK LOGIN" -> System.out.println("[system] Logged in successfully.");
+            case "OK RESUME" -> System.out.println("[system] Session resumed.");
+            case "OK CREATE_ROOM" -> System.out.println("[system] Room created successfully.");
+            case "OK CREATE_AI_ROOM" -> System.out.println("[system] AI room created successfully.");
+            case "OK JOIN" -> System.out.println("[system] Joined room.");
+            case "OK LEAVE" -> System.out.println("[system] Left room.");
+            case "OK bye" -> System.out.println("[system] Goodbye.");
+            default -> printStructuredServerReply(reply);
+        }
+    }
+
+    private void printStructuredServerReply(String reply) {
+        if (reply.equals("ROOMS") || reply.equals("ROOMS ")) {
+            System.out.println("[system] No rooms available.");
+            return;
+        }
+
+        if (reply.startsWith("ROOMS ")) {
+            printRooms(reply.substring("ROOMS ".length()));
+            return;
+        }
+
+        if (reply.startsWith("ROOM_MESSAGE ")) {
+            String[] parts = reply.split("\\s+", 4);
+            if (parts.length == 4) {
+                System.out.printf("[%s] %s: %s%n", parts[1], parts[2], parts[3]);
+                return;
+            }
+        }
+
+        if (reply.startsWith("SYSTEM ")) {
+            String[] parts = reply.split("\\s+", 3);
+            if (parts.length == 3) {
+                System.out.printf("[%s] System: %s%n", parts[1], parts[2]);
+                return;
+            }
+        }
+
+        System.out.printf("server> %s%n", reply);
+    }
+
+    private void printRooms(String roomsPayload) {
+        if (roomsPayload.isBlank()) {
+            System.out.println("[system] No rooms available.");
+            return;
+        }
+
+        System.out.println("Rooms:");
+        for (String room : roomsPayload.split("\\|")) {
+            if (!room.isBlank()) {
+                System.out.printf("- %s%n", room);
+            }
         }
     }
 
