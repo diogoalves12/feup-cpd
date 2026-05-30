@@ -59,6 +59,7 @@ public final class ServerState {
             Session previousSession = sessionsByUsername.put(session.username(), session);
             if (previousSession != null) {
                 sessionsByToken.remove(previousSession.token());
+                removeSessionFromCurrentRoomLocked(previousSession);
                 previousConnection = previousSession.currentConnection();
             }
 
@@ -85,6 +86,7 @@ public final class ServerState {
             if (session.isExpiredAt(now)) {
                 sessionsByToken.remove(token);
                 sessionsByUsername.remove(session.username(), session);
+                removeSessionFromCurrentRoomLocked(session);
                 return null;
             }
 
@@ -307,6 +309,20 @@ public final class ServerState {
                 targets.add(connection);
             }
         }
+    }
+
+    private void removeSessionFromCurrentRoomLocked(Session session) {
+        String roomName = session.currentRoom();
+        if (roomName == null) {
+            return;
+        }
+
+        Room room = roomsByName.get(roomName);
+        if (room != null) {
+            room.removeMember(session.username());
+        }
+
+        session.clearCurrentRoom();
     }
 
     private void sendToTargets(List<ClientConnection> targets, String message) {
