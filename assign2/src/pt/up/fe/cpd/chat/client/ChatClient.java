@@ -76,10 +76,7 @@ public final class ChatClient {
             }
 
             try {
-                if (!runConnectedSession(connectSocket(), true, resumeToken)) {
-                    clearToken();
-                    System.err.println("Session resume failed. Please login again.");
-                }
+                runConnectedSession(connectSocket(), true, resumeToken);
                 return true;
             } catch (IOException exception) {
                 System.err.printf("Reconnect attempt %d/%d failed: %s%n", attempt, MAX_RECONNECT_ATTEMPTS, exception.getMessage());
@@ -109,7 +106,8 @@ public final class ChatClient {
             if (resumeRequested) {
                 boolean resumeAccepted = performResumeHandshake(serverReader, serverWriter, resumeToken);
                 if (!resumeAccepted) {
-                    return false;
+                    clearToken();
+                    System.err.println("Could not resume previous session. Please login again.");
                 }
             }
 
