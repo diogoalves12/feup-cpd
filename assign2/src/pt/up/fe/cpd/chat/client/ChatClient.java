@@ -46,7 +46,9 @@ public final class ChatClient {
 
     private void runConnectionManager() throws IOException {
         try {
-            runConnectedSession(connectSocket(), false);
+            Socket initialSocket = connectSocket();
+            printHelp();
+            runConnectedSession(initialSocket, false);
         } catch (IOException exception) {
             throw new IOException("Unable to connect to the server", exception);
         }
@@ -239,6 +241,15 @@ public final class ChatClient {
         try {
             String line;
             while (isRunning() && (line = consoleReader.readLine()) != null) {
+                if (line.isBlank()) {
+                    continue;
+                }
+
+                if (isLocalHelpCommand(line)) {
+                    printHelp();
+                    continue;
+                }
+
                 enqueueCommand(line);
                 if (Protocol.isQuit(line)) {
                     return;
@@ -251,6 +262,27 @@ public final class ChatClient {
                 System.err.printf("Console input error: %s%n", exception.getMessage());
             }
         }
+    }
+
+    private boolean isLocalHelpCommand(String line) {
+        String command = line.trim();
+        return command.equalsIgnoreCase("HELP") || command.equalsIgnoreCase("/help");
+    }
+
+    private void printHelp() {
+        System.out.println("Commands:");
+        System.out.println("REGISTER <username> <password>");
+        System.out.println("LOGIN <username> <password>");
+        System.out.println("LIST_ROOMS");
+        System.out.println("CREATE_ROOM <room>");
+        System.out.println("CREATE_AI_ROOM <room> | <prompt>");
+        System.out.println("JOIN <room>");
+        System.out.println("LEAVE");
+        System.out.println("MSG <message>");
+        System.out.println("or type directly after joining a room");
+        System.out.println("HELP");
+        System.out.println("QUIT");
+        System.out.println();
     }
 
     private void enqueueCommand(String line) {
