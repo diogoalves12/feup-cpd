@@ -317,18 +317,21 @@ public final class ClientHandler implements Runnable {
                 serverState.broadcastBotMessage(roomName, botResponse);
             } catch (IOException exception) {
                 System.err.printf("AI response failed for room %s: %s%n", roomName, shortReason(exception));
+                serverState.broadcastSystemMessage(roomName, "AI service unavailable. Please check if Ollama is running.");
             }
         });
     }
 
     private String buildAiPrompt(ServerState.AiRoomContext context, String latestUserMessage) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("You are Bot, a participant in a chat room.\n");
-        prompt.append("Use the room prompt and previous messages as context.\n");
-        prompt.append("Reply to the latest user message according to the room prompt.\n");
-        prompt.append("Do not summarize the conversation unless the room prompt explicitly asks for a summary.\n");
+        prompt.append("You are Bot, an assistant participating in an AI chat room.\n");
+        prompt.append("Follow the room prompt as your main instruction.\n");
+        prompt.append("Use the previous room messages as conversation context.\n");
+        prompt.append("Reply to the latest user message in a helpful and concise way.\n");
+        prompt.append("If the room prompt asks you to summarize, plan, decide, compare, or suggest something, use the conversation history to do it.\n");
+        prompt.append("Do not invent information that is not present in the conversation.\n");
         prompt.append("Return only the message text.\n");
-        prompt.append("Do not include prefixes like \"Bot:\" or \"ROOM_MESSAGE\".\n\n");
+        prompt.append("Do not include prefixes like \"Bot:\", \"ROOM_MESSAGE\", or \"SYSTEM\".\n\n");
         prompt.append("Room name:\n");
         prompt.append(context.roomName()).append("\n\n");
         prompt.append("Room prompt:\n");
