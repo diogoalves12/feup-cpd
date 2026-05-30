@@ -10,7 +10,7 @@ import java.time.Duration;
 public final class OllamaClient {
     private static final String DEFAULT_BASE_URL = "http://localhost:11434";
     private static final String DEFAULT_MODEL = "llama3:latest";
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(90);
 
     private final HttpClient httpClient;
     private final URI generateUri;
