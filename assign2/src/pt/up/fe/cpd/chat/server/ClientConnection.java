@@ -8,6 +8,10 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public final class ClientConnection {
+    private static final int MAX_PENDING_MESSAGES = 100;
+    private static final String QUEUE_FULL_MESSAGE = "ERROR Client too slow: disconnecting";
+    private static final long CLOSE_TIMEOUT_MS = 200;
+
     private final String username;
     private final Socket socket;
     private final PrintWriter writer;
@@ -15,6 +19,7 @@ public final class ClientConnection {
     private final ReentrantLock lock = new ReentrantLock();
     private final Condition hasMessages = lock.newCondition();
     private boolean active = true;
+    private boolean closed;
 
     public ClientConnection(String username, Socket socket, PrintWriter writer) {
         this.username = username;
@@ -36,16 +41,32 @@ public final class ClientConnection {
     }
 
     public void send(String message) {
+        boolean shouldCloseAfterTimeout = false;
+
         lock.lock();
         try {
             if (!active) {
                 return;
             }
 
-            outgoingMessages.addLast(message);
-            hasMessages.signal();
+            if (outgoingMessages.size() >= MAX_PENDING_MESSAGES) {
+                outgoingMessages.clear();
+                outgoingMessages.addLast(QUEUE_FULL_MESSAGE);
+                active = false;
+                hasMessages.signalAll();
+                shouldCloseAfterTimeout = true;
+
+            } else {
+                outgoingMessages.addLast(message);
+                hasMessages.signal();
+            }
+            
         } finally {
             lock.unlock();
+        }
+
+        if (shouldCloseAfterTimeout) {
+            Thread.ofVirtual().start(this::closeClientAfterTimeout);
         }
     }
 
@@ -54,6 +75,31 @@ public final class ClientConnection {
         try {
             active = false;
             hasMessages.signalAll();
+        } finally {
+            lock.unlock();
+        }
+
+        closeClient();
+    }
+
+    private void closeClientAfterTimeout() {
+        try {
+            Thread.sleep(CLOSE_TIMEOUT_MS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
+
+        closeClient();
+    }
+
+    private void closeClient() {
+        lock.lock();
+        try {
+            if (closed) {
+                return;
+            }
+
+            closed = true;
         } finally {
             lock.unlock();
         }
@@ -98,6 +144,8 @@ public final class ClientConnection {
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
+        } finally {
+            closeClient();
         }
     }
 }
