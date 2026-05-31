@@ -126,6 +126,8 @@ public final class ClientHandler implements Runnable {
         currentSession = session;
         installConnection(writer);
         reply(writer, Protocol.ok(CommandType.LOGIN.name()));
+        System.out.printf("[%s] TOKEN issued for %s: %s %s%n",
+            socket.getRemoteSocketAddress(), session.username(), session.token(), session.expiresAt());
         reply(writer, Protocol.token(session.token(), session.expiresAt()));
     }
 
@@ -219,18 +221,13 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
-        String roomName = currentSession.currentRoom();
+        String roomName = serverState.leaveCurrentRoom(currentSession);
         if (roomName == null) {
             reply(writer, Protocol.error("Not in a room"));
             return;
         }
 
         serverState.broadcastSystemMessage(roomName, currentSession.username() + " left the room");
-        if (!serverState.leaveRoom(currentSession)) {
-            reply(writer, Protocol.error("Not in a room"));
-            return;
-        }
-
         reply(writer, Protocol.ok(CommandType.LEAVE.name()));
     }
 
@@ -239,7 +236,7 @@ public final class ClientHandler implements Runnable {
     }
 
     private boolean handleTextMessage(String line, PrintWriter writer) {
-        if (!isAuthenticated() || currentSession.currentRoom() == null || line.trim().isEmpty()) {
+        if (!isAuthenticated() || serverState.currentRoomOf(currentSession) == null || line.trim().isEmpty()) {
             return false;
         }
 
@@ -252,15 +249,14 @@ public final class ClientHandler implements Runnable {
             return;
         }
 
-        String roomName = currentSession.currentRoom();
-        if (roomName == null) {
+        ServerState.MessageBroadcastResult result = serverState.broadcastMessageFrom(currentSession, message);
+        if (!result.sent()) {
             reply(writer, Protocol.error("Not in a room"));
             return;
         }
 
-        serverState.broadcastRoomMessage(currentSession, message);
-        if (serverState.isAiRoom(roomName)) {
-            triggerAiResponse(roomName, message);
+        if (result.aiRoom()) {
+            triggerAiResponse(result.roomName(), message);
         }
     }
 

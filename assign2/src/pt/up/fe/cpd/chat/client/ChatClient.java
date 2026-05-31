@@ -302,6 +302,7 @@ public final class ChatClient {
     private void printServerReply(String reply) {
         if (reply.startsWith("TOKEN ")) {
             System.out.println("[system] Session started.");
+            System.out.println("[system] " + reply);
             return;
         }
 

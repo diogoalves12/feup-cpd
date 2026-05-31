@@ -203,6 +203,35 @@ public final class ServerState {
         }
     }
 
+    public String currentRoomOf(Session session) {
+        lock.lock();
+        try {
+            return session.currentRoom();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public String leaveCurrentRoom(Session session) {
+        lock.lock();
+        try {
+            String currentRoomName = session.currentRoom();
+            if (currentRoomName == null) {
+                return null;
+            }
+
+            Room room = roomsByName.get(currentRoomName);
+            if (room != null) {
+                room.removeMember(session.username());
+            }
+
+            session.clearCurrentRoom();
+            return currentRoomName;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public boolean broadcastRoomMessage(Session senderSession, String message) {
         List<ClientConnection> targets = new ArrayList<>();
         String roomName;
@@ -229,6 +258,36 @@ public final class ServerState {
 
         sendToTargets(targets, formattedMessage);
         return true;
+    }
+
+    public MessageBroadcastResult broadcastMessageFrom(Session senderSession, String message) {
+        List<ClientConnection> targets = new ArrayList<>();
+        String roomName;
+        String formattedMessage;
+        boolean aiRoom;
+
+        lock.lock();
+        try {
+            roomName = senderSession.currentRoom();
+            if (roomName == null) {
+                return MessageBroadcastResult.notSent();
+            }
+
+            Room room = roomsByName.get(roomName);
+            if (room == null) {
+                return MessageBroadcastResult.notSent();
+            }
+
+            formattedMessage = Protocol.roomMessage(roomName, senderSession.username(), message);
+            aiRoom = room.isAiRoom();
+            room.addMessage(formattedMessage);
+            collectActiveConnectionsLocked(room.memberUsernamesCopy(), targets);
+        } finally {
+            lock.unlock();
+        }
+
+        sendToTargets(targets, formattedMessage);
+        return new MessageBroadcastResult(true, roomName, aiRoom);
     }
 
     public boolean isAiRoom(String roomName) {
@@ -345,6 +404,12 @@ public final class ServerState {
     public record AiRoomContext(String roomName, String prompt, List<String> messageLog) {
         public AiRoomContext {
             messageLog = List.copyOf(messageLog);
+        }
+    }
+
+    public record MessageBroadcastResult(boolean sent, String roomName, boolean aiRoom) {
+        public static MessageBroadcastResult notSent() {
+            return new MessageBroadcastResult(false, null, false);
         }
     }
 }
