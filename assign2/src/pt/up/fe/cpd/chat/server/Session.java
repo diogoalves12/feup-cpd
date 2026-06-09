@@ -2,6 +2,11 @@ package pt.up.fe.cpd.chat.server;
 
 import java.time.Instant;
 
+/* Sessao de um utilizador autenticado: estado volatil em memoria.
+ * Separa-se de User (que e persistido em disco) porque a sessao tem tempo de vida
+ * limitado (token com expiracao) e pode ser substituida por uma nova ligacao via RESUME.
+ * A currentConnection pode mudar sem o utilizador sair da sala.
+ */
 public final class Session {
     private final String username;
     private final String token;

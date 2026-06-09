@@ -4,6 +4,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+/* Servico de autenticacao: hash SHA-256 de palavras-passe.
+ * As palavras-passe nunca sao guardadas em texto simples, apenas o hash hexadecimal e persistido.
+ */
 public final class AuthService {
     private AuthService() {
     }

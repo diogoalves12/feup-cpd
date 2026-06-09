@@ -31,6 +31,10 @@ public final class OllamaClient {
         this.model = model == null || model.isBlank() ? DEFAULT_MODEL : model.trim();
     }
 
+    /* Envia o prompt ao Ollama e extrai o campo "response" da resposta JSON.
+     * Qualquer falha (HTTP != 2xx, resposta vazia, timeout, interrupcao) e convertida
+     * em IOException para o ClientHandler tratar com mensagem de sistema.
+     */
     public String generate(String prompt) throws IOException {
         HttpRequest request = HttpRequest.newBuilder(generateUri)
             .timeout(REQUEST_TIMEOUT)
@@ -104,6 +108,7 @@ public final class OllamaClient {
         return escaped.toString();
     }
 
+    // Parse manual do JSON para extrair um campo string evita dependencias externas.
     private static String extractJsonStringField(String json, String fieldName) {
         String needle = "\"" + fieldName + "\"";
         int fieldIndex = json.indexOf(needle);

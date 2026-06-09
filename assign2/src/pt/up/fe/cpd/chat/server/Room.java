@@ -5,6 +5,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/* Sala de chat: guarda membros, historico de mensagens e (se for sala IA) o prompt.
+ * Nao tem lock proprio, e protegida pelo lock global do ServerState.
+ */
 public final class Room {
     private final String name;
     private final boolean aiRoom;
@@ -42,6 +45,9 @@ public final class Room {
         memberUsernames.remove(username);
     }
 
+    /* Devolve uma copia defensiva dos membros. O caller recebe uma snapshot e pode
+     * usa-la depois de libertar o lock sem risco de a colecao ser modificada entretanto.
+     */
     public List<String> memberUsernamesCopy() {
         return new ArrayList<>(memberUsernames);
     }
@@ -50,6 +56,7 @@ public final class Room {
         messageHistory.add(message);
     }
 
+    // Mesmo principio que memberUsernamesCopy,  snapshot segura para usar fora do lock.
     public List<String> messageLogCopy() {
         return new ArrayList<>(messageHistory);
     }

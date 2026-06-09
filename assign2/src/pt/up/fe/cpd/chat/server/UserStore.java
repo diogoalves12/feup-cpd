@@ -10,6 +10,10 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
+/* Persistencia de utilizadores em ficheiro de texto (assign2/data/users.txt).
+ * Formato por linha: "username;hashSHA256". Os utilizadores sobrevivem a um restart
+ * do servidor, as sessoes e salas sao estado volatil em memoria e nao sao persistidas.
+ */
 public final class UserStore {
     private static final Path DEFAULT_USERS_FILE = Path.of("assign2", "data", "users.txt");
 
@@ -42,6 +46,9 @@ public final class UserStore {
         }
     }
 
+    /* APPEND para nao sobrescrever utilizadores ja existentes.
+     * Nao e necessario reescrever o ficheiro todo porque nunca removemos utilizadores.
+     */
     public void saveUser(User user) {
         if (user.username().contains(";")) {
             throw new IllegalArgumentException("Username must not contain ';'");
@@ -64,6 +71,9 @@ public final class UserStore {
         }
     }
 
+    /* Validacao estrita: ignora linhas mal formadas em vez de crashar.
+     * Verifica que existe exatamente um ";" e que nenhum dos campos e vazio.
+     */
     private User parseUser(String line) {
         if (line == null || line.isBlank()) {
             return null;

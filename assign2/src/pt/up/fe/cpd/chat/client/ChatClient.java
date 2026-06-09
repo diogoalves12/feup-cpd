@@ -15,6 +15,10 @@ import java.util.ArrayDeque;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+/* Cliente de consola: gere a ligacao TCP, le comandos do utilizador,
+ * envia-os para o servidor e trata automaticamente da reconexao via token.
+ * Usa tres threads: consola (le input), sender (envia comandos), reader (recebe respostas).
+ */
 public final class ChatClient {
     private static final int RECONNECT_DELAY_MILLIS = 1_000;
     private static final int MAX_RECONNECT_ATTEMPTS = 10;
@@ -35,6 +39,9 @@ public final class ChatClient {
         this.port = port;
     }
 
+    /* Lanca a thread de consola (virtual) e depois entra no runConnectionManager.
+     * A thread de consola corre independentemente: le input e coloca em outgoingCommands.
+     */
     public void start() throws IOException {
         try (BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             Thread.ofVirtual().start(() -> readConsole(consoleReader));
@@ -44,6 +51,9 @@ public final class ChatClient {
         }
     }
 
+    /* Loop principal de ligacao: liga, corre a sessao, e se cair tenta reconectar.
+     * Se nao houver token valido (sessao expirada ou nunca autenticado), desiste.
+     */
     private void runConnectionManager() throws IOException {
         try {
             Socket initialSocket = connectSocket();
@@ -217,6 +227,9 @@ public final class ChatClient {
         }
     }
 
+    /* Duplo papel: guarda o token quando aparece na resposta, e imprime todas as respostas.
+     * Ao terminar (servidor fechou, erro de rede), acorda o sender para ele tambem terminar.
+     */
     private void readServerReplies(BufferedReader serverReader, ConnectionState connectionState) {
         try {
             String reply;
@@ -369,6 +382,7 @@ public final class ChatClient {
         }
     }
 
+    // Guarda o token em memoria para usar no RESUME se a ligacao cair.
     private void captureToken(String reply) {
         String[] parts = reply.split("\\s+", 3);
         if (parts.length != 3) {
@@ -391,6 +405,7 @@ public final class ChatClient {
         }
     }
 
+    // Devolve o token so se ainda nao expirou -> token expirado nao serve para RESUME.
     private String currentToken() {
         lock.lock();
         try {

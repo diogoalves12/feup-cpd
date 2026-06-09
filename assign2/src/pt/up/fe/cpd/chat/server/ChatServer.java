@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/* Ponto de entrada do servidor, abre o ServerSocket e fica em loop infinito a aceitar ligacoes TCP (garantem a entrega e a ordem).
+ * Cada ligacao (cliente) é delegada a uma virtual thread com um ClientHandler independente.
+ */
 public final class ChatServer {
     private final int port;
     private final ServerState serverState;
@@ -13,13 +16,19 @@ public final class ChatServer {
         this.serverState = new ServerState();
     }
 
-    public void start() throws IOException {
+    public void start() throws IOException {    
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.printf("ChatServer listening on port %d%n", port);
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.printf("Accepted connection from %s%n", clientSocket.getRemoteSocketAddress());
+                /*
+                * Para cada cliente que liga, criamos uma virtual thread com um ClientHandler.
+                *
+                * O servidor nunca fica bloqueado num cliente especifico e está sempre disponivel para aceitar novas ligacoes.
+                * Virtual threads (Java 21) têm overhead minimo, perfeito para operacoes de rede que passam a maior parte do tempo à espera de dados (I/O-bound).
+                */
                 Thread.ofVirtual().start(new ClientHandler(clientSocket, serverState));
             }
         }

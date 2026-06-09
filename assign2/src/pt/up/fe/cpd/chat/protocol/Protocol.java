@@ -4,6 +4,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
+/* Construtores de todas as mensagens do protocolo texto linha-a-linha.
+ * Classe utilitaria estatica, garante que as mensagens sao sempre formatadas
+ * de forma consistente em toda a base de codigo.
+ */
 public final class Protocol {
     public static final String OK = "OK";
     public static final String ERROR = "ERROR";
@@ -23,6 +27,9 @@ public final class Protocol {
         return "TOKEN " + token + " " + expiresAt;
     }
 
+    /* Usa "|" como separador para permitir espacos nos nomes de salas
+     * sem ambiguidade no parse (o protocolo usa espacos para separar campos).
+     */
     public static String rooms(List<String> roomNames) {
         if (roomNames.isEmpty()) {
             return "ROOMS";

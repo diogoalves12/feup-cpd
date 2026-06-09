@@ -7,6 +7,11 @@ import java.util.ArrayDeque;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+/* Gere a fila de saida de mensagens de um cliente ligado.
+ * Resolve o problema do slow client: o servidor nunca escreve diretamente no socket 
+ * adiciona a uma fila ArrayDeque e uma virtual thread escritora consome ao ritmo do cliente.
+ * Se a fila encher (MAX_PENDING_MESSAGES), o cliente e desligado.
+ */
 public final class ClientConnection {
     private static final int MAX_PENDING_MESSAGES = 100;
     private static final String QUEUE_FULL_MESSAGE = "ERROR Client too slow: disconnecting";
@@ -40,6 +45,10 @@ public final class ClientConnection {
         }
     }
 
+    /* Adiciona a mensagem a fila e acorda o writer loop.
+     * Se a fila estiver cheia (cliente demasiado lento), limpa a fila, envia erro
+     * e agenda o fecho do socket com delay para o cliente ter tempo de ler o erro.
+     */
     public void send(String message) {
         boolean shouldCloseAfterTimeout = false;
 
@@ -82,6 +91,7 @@ public final class ClientConnection {
         closeClient();
     }
 
+    // Pequeno delay antes de fechar para dar ao writer loop tempo de enviar a mensagem de erro.
     private void closeClientAfterTimeout() {
         try {
             Thread.sleep(CLOSE_TIMEOUT_MS);
@@ -112,10 +122,15 @@ public final class ClientConnection {
         }
     }
 
+    // Virtual thread porque passa a maior parte do tempo bloqueada na escrita do socket (I/O-bound).
     public void startWriter() {
         Thread.ofVirtual().start(this::runWriterLoop);
     }
 
+    /* Loop do escritor: usa Condition para evitar busy-waiting.
+     * A thread suspende em await() quando a fila esta vazia e e acordada por signal()
+     * quando chega uma mensagem ou quando a conexao fecha.
+     */
     private void runWriterLoop() {
         try {
             while (true) {

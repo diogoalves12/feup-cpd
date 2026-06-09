@@ -10,7 +10,16 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import pt.up.fe.cpd.chat.protocol.Protocol;
 
+/* Estado partilhado de todo o servidor: utilizadores, sessoes e salas.
+ * É o ficheiro mais importante para a concorrencia:  todas as estruturas de dados são colecoes Java normais (HashMap, HashSet) protegidas por um unico ReentrantLock,
+ * como o enunciado exige (sem java.util.concurrent).
+ */
 public final class ServerState {
+    /* Lock global que protege todas as colecoes. Um lock unico simplifica
+     * as race conditions: tendo o lock, temos acesso exclusivo
+     * a todo o estado. A alternativa (lock por sala) reduziria contencao mas
+     * aumentaria o risco de deadlock.
+     */
     private final ReentrantLock lock = new ReentrantLock();
     private final Map<String, User> usersByUsername = new HashMap<>();
     private final Map<String, Session> sessionsByToken = new HashMap<>();
@@ -52,6 +61,10 @@ public final class ServerState {
         }
     }
 
+    /* Se ja existia uma sessao para este username, a sessao antiga e substituida:
+     * removida dos dois mapas e a sua ligacao e fechada fora do lock para nao bloquear.
+     * Assim um utilizador so tem uma sessao ativa de cada vez.
+     */
     public Session storeSession(Session session) {
         ClientConnection previousConnection = null;
         lock.lock();
@@ -75,6 +88,9 @@ public final class ServerState {
         return session;
     }
 
+    /* Para alem de encontrar a sessao, limpa automaticamente sessoes expiradas.
+     * Assim nao precisamos de uma thread de limpeza separada.
+     */
     public Session findValidSession(String token, Instant now) {
         lock.lock();
         try {
@@ -260,6 +276,11 @@ public final class ServerState {
         return true;
     }
 
+    /* Adquire o lock para recolher as conexoes ativas dos membros,
+     * liberta o lock, e so DEPOIS chama send() em cada conexao.
+     * Isto evita deadlock entre o lock do ServerState e o lock interno do ClientConnection
+     * os dois locks nunca sao mantidos em simultaneo.
+     */
     public MessageBroadcastResult broadcastMessageFrom(Session senderSession, String message) {
         List<ClientConnection> targets = new ArrayList<>();
         String roomName;
@@ -356,6 +377,7 @@ public final class ServerState {
         sendToTargets(targets, formattedMessage);
     }
 
+    // "Locked" no nome indica que o caller deve ter o lock antes de chamar este metodo.
     private void collectActiveConnectionsLocked(List<String> memberUsernames, List<ClientConnection> targets) {
         for (String username : memberUsernames) {
             Session memberSession = sessionsByUsername.get(username);

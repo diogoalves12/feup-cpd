@@ -16,6 +16,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
+/* 
+ * Cada cliente ligado tem o seu próprio ClientHandler a correr numa virtual thread.
+ * Este ficheiro trata de toda a lógica de comandos: registo, login, resume, listar salas, criar salas, entrar/sair de salas, enviar mensagens e sair.
+ */
 public final class ClientHandler implements Runnable {
     private final Socket socket;
     private final ServerState serverState;
@@ -36,6 +40,10 @@ public final class ClientHandler implements Runnable {
     @Override
     public void run() {
         try (socket;
+            /*
+             * Lê linha a linha do socket com BufferedReader para cada linha
+             * Depois tenta fazer parse com CommandParser.parse()
+            */
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
              PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)), true)) {
 
@@ -108,6 +116,9 @@ public final class ClientHandler implements Runnable {
         writer.println(Protocol.ok(CommandType.REGISTER.name()));
     }
 
+    /* Verifica credenciais, cria sessao com token e instala a ClientConnection.
+     * O token e enviado separadamente apos o OK LOGIN para o cliente o guardar para RESUME.
+     */
     private void handleLogin(List<String> arguments, PrintWriter writer) {
         String username = arguments.getFirst().trim();
         String password = arguments.get(1).trim();
@@ -131,6 +142,9 @@ public final class ClientHandler implements Runnable {
         reply(writer, Protocol.token(session.token(), session.expiresAt()));
     }
 
+    /* Retoma uma sessao existente pelo token sem precisar de credenciais.
+     * A sessao continua com a sala atual -> o utilizador volta mesma sala.
+     */
     private void handleResume(List<String> arguments, PrintWriter writer) {
         String token = arguments.getFirst().trim();
         if (token.isBlank()) {
@@ -277,6 +291,9 @@ public final class ClientHandler implements Runnable {
         return currentSession != null;
     }
 
+    /* Cria uma nova ClientConnection para esta ligacao TCP e associa-a a sessao.
+     * Chamado tanto no login inicial como no RESUME (substituindo a ligacao anterior).
+     */
     private void installConnection(PrintWriter writer) {
         ClientConnection newConnection = new ClientConnection(currentSession.username(), socket, writer);
         newConnection.startWriter();
@@ -284,6 +301,9 @@ public final class ClientHandler implements Runnable {
         currentConnection = newConnection;
     }
 
+    /* Chamado no finally do run() -> garante que ao fechar a ligacao, a ClientConnection
+     * é desligada da sessao. A sessao fica orfa mas continua nos mapas e pode ser retomada via RESUME se o token ainda for valido.
+     */
     private void cleanupConnection() {
         if (currentSession != null && currentConnection != null) {
             serverState.detachConnection(currentSession, currentConnection);
@@ -291,6 +311,9 @@ public final class ClientHandler implements Runnable {
         }
     }
 
+    /* Apos installConnection, usa a fila do ClientConnection para proteger contra slow client.
+     * Antes da conexao estar instalada (ex: durante o handshake), escreve direto no writer.
+     */
     private void reply(PrintWriter writer, String message) {
         if (currentConnection != null && currentConnection.isActive()) {
             currentConnection.send(message);
@@ -300,6 +323,10 @@ public final class ClientHandler implements Runnable {
         writer.println(message);
     }
 
+    /* Lanca uma virtual thread separada para o pedido ao Ollama para nao bloquear
+     * o handler enquanto o modelo gera a resposta (pode demorar varios segundos).
+     * Se o Ollama nao estiver disponivel, envia mensagem de sistema em vez de crashar.
+     */
     private void triggerAiResponse(String roomName, String latestUserMessage) {
         Thread.ofVirtual().start(() -> {
             ServerState.AiRoomContext context = serverState.aiRoomContext(roomName);
